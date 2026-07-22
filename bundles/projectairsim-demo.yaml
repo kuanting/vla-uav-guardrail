@@ -1,0 +1,60 @@
+# Project AirSim visual demo policy. The UE5 drone spawns at local-NED origin
+# (0,0,0). The IR's projection origin is the FIRST polygon's centroid, so the
+# first constraint here is a tiny P2 marker polygon AT the spawn point — that
+# pins the origin to the drone's home. The real P0 NFZ is then 15-35 m north in
+# absolute IR-plane metres, so the straight path to the 50 m target clips it.
+policy_id: projectairsim-demo
+version: 0.1.0
+generation: 0
+issued_at: 2026-07-09T00:00:00Z
+
+constraints:
+  # P2 marker at the spawn point — pins the IR projection origin to (0,0).
+  # Not enforced (monitor_only, P2); it exists only to fix the coordinate frame.
+  - id: origin-marker
+    type: polygon_fence
+    constraint_type: soft
+    scope: global
+    priority: P2
+    layer: site
+    violation_action: monitor_only
+    geometry:
+      vertices:
+        - { lat: 0.0000000, lon:  0.0000000 }
+        - { lat: 0.0000009, lon:  0.0000000 }
+        - { lat: 0.0000009, lon:  0.0000009 }
+        - { lat: 0.0000000, lon:  0.0000009 }
+      altitude_floor_m: 0
+      altitude_ceiling_m: 200
+      altitude_ref: AGL
+
+  # The real P0 no-fly zone: 15-35 m north of spawn, 20 m wide east.
+  - id: nfz-block
+    type: polygon_fence
+    constraint_type: hard
+    scope: global
+    priority: P0
+    layer: site
+    violation_action: project_fix
+    geometry:
+      # 1 m ~ 0.00000898 deg (at equator). 15 m = 0.0001348, 35 m = 0.0003144,
+      # 10 m east = 0.0000898.
+      vertices:
+        - { lat: 0.0001348, lon: -0.0000898 }   # (15N, -10E)
+        - { lat: 0.0003144, lon: -0.0000898 }   # (35N, -10E)
+        - { lat: 0.0003144, lon:  0.0000898 }   # (35N, +10E)
+        - { lat: 0.0001348, lon:  0.0000898 }   # (15N, +10E)
+      altitude_floor_m: 0
+      altitude_ceiling_m: 200
+      altitude_ref: AGL
+
+  - id: envelope-default
+    type: altitude_envelope
+    constraint_type: soft
+    scope: global
+    priority: P1
+    layer: regulation
+    violation_action: brake
+    altitude_min_m: 2
+    altitude_max_m: 120
+    altitude_ref: AGL

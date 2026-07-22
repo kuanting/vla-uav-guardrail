@@ -1,0 +1,106 @@
+{
+ "name": "baseline",
+ "adapter": "D:/models/aerialvla-lora/aero_vla",
+ "episodes": 5,
+ "reached_rate": 0.2,
+ "mean_efficiency": 0.211,
+ "mean_interventions": 367.6,
+ "nfz_total_s": 0.0,
+ "results": [
+  {
+   "reached": false,
+   "ticks": 682,
+   "nfz_s": 0.0,
+   "interventions": 460,
+   "path_len_m": 141.4,
+   "straight_m": 40.5,
+   "efficiency": 0.0,
+   "params": {
+    "yaw_gain": 1.0,
+    "goal_blend": 0.0,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    26,
+    31
+   ]
+  },
+  {
+   "reached": false,
+   "ticks": 675,
+   "nfz_s": 0.0,
+   "interventions": 406,
+   "path_len_m": 163.8,
+   "straight_m": 44.6,
+   "efficiency": 0.0,
+   "params": {
+    "yaw_gain": 1.0,
+    "goal_blend": 0.0,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    7,
+    -44
+   ]
+  },
+  {
+   "reached": false,
+   "ticks": 669,
+   "nfz_s": 0.0,
+   "interventions": 379,
+   "path_len_m": 169.5,
+   "straight_m": 53.2,
+   "efficiency": 0.0,
+   "params": {
+    "yaw_gain": 1.0,
+    "goal_blend": 0.0,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    5,
+    53
+   ]
+  },
+  {
+   "reached": true,
+   "ticks": 168,
+   "nfz_s": 0.0,
+   "interventions": 122,
+   "path_len_m": 39.9,
+   "straight_m": 42.0,
+   "efficiency": 1.053,
+   "params": {
+    "yaw_gain": 1.0,
+    "goal_blend": 0.0,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    -33,
+    26
+   ]
+  },
+  {
+   "reached": false,
+   "ticks": 680,
+   "nfz_s": 0.0,
+   "interventions": 471,
+   "path_len_m": 199.1,
+   "straight_m": 40.7,
+   "efficiency": 0.0,
+   "params": {
+    "yaw_gain": 1.0,
+    "goal_blend": 0.0,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    36,
+    -19
+   ]
+  }
+ ]
+}

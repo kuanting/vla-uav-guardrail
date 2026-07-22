@@ -1,0 +1,38 @@
+# Sim demo policy — same rules as demo_policy.yaml but altitude band lifted to
+# 10-20 m so the mission flies ABOVE the physical blocks in the Blocks world.
+# (Physical obstacle avoidance is the OTHER team's layer; the Guardrail only
+# enforces policy constraints.)
+policy_id: fase3-sim-demo
+version: 0.1.1
+
+constraints:
+  - id: nfz-square
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - { x: 7,  y: 7 }
+      - { x: 23, y: 7 }
+      - { x: 23, y: 23 }
+      - { x: 7,  y: 23 }
+    altitude_floor_m: 0
+    altitude_ceiling_m: 100
+    margin_m: 1.0
+
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 10
+    alt_max_m: 20
+
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 4.0
+    climb_rate_max_mps: 2.0
+    yaw_rate_max_dps: 45.0

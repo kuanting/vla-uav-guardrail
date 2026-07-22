@@ -1,0 +1,106 @@
+{
+ "name": "ft2_deploy",
+ "adapter": "D:/models/aerialvla-ft/run2/epoch1",
+ "episodes": 5,
+ "reached_rate": 1.0,
+ "mean_efficiency": 0.996,
+ "mean_interventions": 43.6,
+ "nfz_total_s": 0.0,
+ "results": [
+  {
+   "reached": true,
+   "ticks": 168,
+   "nfz_s": 0.0,
+   "interventions": 96,
+   "path_len_m": 47.7,
+   "straight_m": 40.5,
+   "efficiency": 0.848,
+   "params": {
+    "yaw_gain": 0.4,
+    "goal_blend": 0.55,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    26,
+    31
+   ]
+  },
+  {
+   "reached": true,
+   "ticks": 133,
+   "nfz_s": 0.0,
+   "interventions": 25,
+   "path_len_m": 44.5,
+   "straight_m": 44.6,
+   "efficiency": 1.0,
+   "params": {
+    "yaw_gain": 0.4,
+    "goal_blend": 0.55,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    7,
+    -44
+   ]
+  },
+  {
+   "reached": true,
+   "ticks": 152,
+   "nfz_s": 0.0,
+   "interventions": 25,
+   "path_len_m": 52.1,
+   "straight_m": 53.2,
+   "efficiency": 1.022,
+   "params": {
+    "yaw_gain": 0.4,
+    "goal_blend": 0.55,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    5,
+    53
+   ]
+  },
+  {
+   "reached": true,
+   "ticks": 122,
+   "nfz_s": 0.0,
+   "interventions": 0,
+   "path_len_m": 39.1,
+   "straight_m": 42.0,
+   "efficiency": 1.073,
+   "params": {
+    "yaw_gain": 0.4,
+    "goal_blend": 0.55,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    -33,
+    26
+   ]
+  },
+  {
+   "reached": true,
+   "ticks": 111,
+   "nfz_s": 0.0,
+   "interventions": 72,
+   "path_len_m": 39.3,
+   "straight_m": 40.7,
+   "efficiency": 1.036,
+   "params": {
+    "yaw_gain": 0.4,
+    "goal_blend": 0.55,
+    "dv_h": 0.25,
+    "dv_z": 0.15
+   },
+   "target": [
+    36,
+    -19
+   ]
+  }
+ ]
+}

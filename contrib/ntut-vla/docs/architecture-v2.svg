@@ -1,0 +1,174 @@
+<svg width="980" height="1150" viewBox="0 0 980 1150" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#555"/>
+    </marker>
+    <marker id="arrowT" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#1a7f94"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#2f6fb0"/>
+    </marker>
+  </defs>
+
+  <style>
+    .new   { fill:#e6f7fa; stroke:#249DB2; stroke-width:2.5; }
+    .team  { fill:#e9f1fb; stroke:#2f6fb0; stroke-width:2; }
+    .core  { fill:#efefef; stroke:#8a8a8a; stroke-width:2; }
+    .iface { fill:#fdf6e3; stroke:#c9a227; stroke-width:2; stroke-dasharray:6 4; }
+    .t     { font-size:15px; font-weight:600; fill:#222; }
+    .s     { font-size:11.5px; fill:#555; }
+    .badge { font-size:10.5px; font-weight:700; }
+    .flow  { stroke:#555; stroke-width:1.8; fill:none; marker-end:url(#arrow); }
+    .flowT { stroke:#1a7f94; stroke-width:1.8; fill:none; marker-end:url(#arrowT); }
+    .flowB { stroke:#2f6fb0; stroke-width:1.8; fill:none; marker-end:url(#arrowB); stroke-dasharray:5 4; }
+  </style>
+
+  <!-- Title -->
+  <text x="490" y="34" text-anchor="middle" font-size="21" font-weight="700" fill="#1c1c1c">Constraint-Aware VLA for ArduPilot — Architecture v2</text>
+  <text x="490" y="56" text-anchor="middle" font-size="12.5" fill="#666">NTUT AIoT Lab — Guardrail work package · 2026-07-03 · supersedes v1 (kickoff 2026-06-23)</text>
+
+  <!-- Legend -->
+  <g transform="translate(70,74)">
+    <rect class="new"  x="0"   y="0" width="20" height="14" rx="3"/><text class="s" x="26"  y="11">NEW — our team (Guardrail)</text>
+    <rect class="team" x="215" y="0" width="20" height="14" rx="3"/><text class="s" x="241" y="11">Prof. Lai team (application layer)</text>
+    <rect class="core" x="455" y="0" width="20" height="14" rx="3"/><text class="s" x="481" y="11">Existing — NOT modified</text>
+    <rect class="iface" x="640" y="0" width="20" height="14" rx="3"/><text class="s" x="666" y="11">Interface to define together</text>
+  </g>
+
+  <!-- ===================== LEFT RAIL: policy plane (ours) ===================== -->
+  <g>
+    <rect class="new" x="40" y="150" width="215" height="86" rx="10"/>
+    <text class="t" x="147" y="176" text-anchor="middle">Policy DSL + IR</text>
+    <text class="s" x="147" y="194" text-anchor="middle">YAML rules → validated bundle</text>
+    <text class="s" x="147" y="209" text-anchor="middle">policy_hash + generation</text>
+    <text class="badge" x="147" y="226" text-anchor="middle" fill="#1a7f94">✓ PROTOTYPED (mini)</text>
+
+    <rect class="new" x="40" y="286" width="215" height="70" rx="10"/>
+    <text class="t" x="147" y="311" text-anchor="middle">Hot-apply endpoint</text>
+    <text class="s" x="147" y="328" text-anchor="middle">dynamic_nfz mid-flight, gen bump</text>
+    <text class="badge" x="147" y="345" text-anchor="middle" fill="#1a7f94">✓ PROTOTYPED</text>
+
+    <rect class="new" x="40" y="406" width="215" height="86" rx="10"/>
+    <text class="t" x="147" y="432" text-anchor="middle">Verification / Stress</text>
+    <text class="s" x="147" y="450" text-anchor="middle">A/B runs · KPI report · audit log</text>
+    <text class="s" x="147" y="465" text-anchor="middle">trajectory + NFZ-seconds metric</text>
+    <text class="badge" x="147" y="482" text-anchor="middle" fill="#1a7f94">✓ PROTOTYPED (v0)</text>
+  </g>
+
+  <!-- ===================== CENTER: mission data path ===================== -->
+  <g>
+    <rect class="core" x="380" y="120" width="220" height="52" rx="10"/>
+    <text class="t" x="490" y="143" text-anchor="middle">Operator command</text>
+    <text class="s" x="490" y="160" text-anchor="middle">"fly to the northeast pad at 6 m/s"</text>
+
+    <rect class="new" x="380" y="204" width="220" height="66" rx="10"/>
+    <text class="t" x="490" y="228" text-anchor="middle">Constraint Compiler</text>
+    <text class="s" x="490" y="245" text-anchor="middle">ambiguous text → structured mission</text>
+    <text class="badge" x="490" y="261" text-anchor="middle" fill="#1a7f94">✓ PROTOTYPED (prefix half)</text>
+
+    <rect class="new" x="380" y="302" width="220" height="58" rx="10"/>
+    <text class="t" x="490" y="325" text-anchor="middle">YAML prompt (CSP)</text>
+    <text class="s" x="490" y="342" text-anchor="middle">mission + constraint summary</text>
+
+    <rect class="team" x="380" y="392" width="220" height="66" rx="10"/>
+    <text class="t" x="490" y="416" text-anchor="middle">VLA backend</text>
+    <text class="s" x="490" y="433" text-anchor="middle">image + prompt → 4-D action @10 Hz</text>
+    <text class="badge" x="490" y="449" text-anchor="middle" fill="#2f6fb0">stub today · model swappable</text>
+
+    <rect class="new" x="380" y="490" width="220" height="88" rx="10"/>
+    <text class="t" x="490" y="514" text-anchor="middle">Safety Shield</text>
+    <text class="s" x="490" y="531" text-anchor="middle">3 s lookahead → repair ops → re-check</text>
+    <text class="s" x="490" y="546" text-anchor="middle">clamp · altitude fix · slide · escape · brake</text>
+    <text class="badge" x="490" y="564" text-anchor="middle" fill="#1a7f94">✓ PROTOTYPED — 16/16 tests</text>
+
+    <rect class="core" x="380" y="610" width="220" height="56" rx="10"/>
+    <text class="t" x="490" y="633" text-anchor="middle">MAVROS 2 / MAVLink</text>
+    <text class="s" x="490" y="650" text-anchor="middle">SET_POSITION_TARGET_LOCAL_NED</text>
+
+    <rect class="core" x="380" y="698" width="220" height="70" rx="10"/>
+    <text class="t" x="490" y="722" text-anchor="middle">ArduPilot (PX4 later)</text>
+    <text class="s" x="490" y="739" text-anchor="middle">inner loop 100–400 Hz</text>
+    <text class="s" x="490" y="754" text-anchor="middle">GeoFence / RTL / Land = last backstop</text>
+
+    <rect class="core" x="380" y="800" width="220" height="50" rx="10"/>
+    <text class="t" x="490" y="823" text-anchor="middle">Drone (sim / real)</text>
+    <text class="s" x="490" y="839" text-anchor="middle">today: AirSim Blocks · later: SITL + HIL</text>
+  </g>
+
+  <!-- ===================== RIGHT RAIL: Prof. Lai team ===================== -->
+  <g>
+    <rect class="team" x="725" y="150" width="215" height="80" rx="10"/>
+    <text class="t" x="832" y="175" text-anchor="middle">GCS (Mission Planner)</text>
+    <text class="s" x="832" y="192" text-anchor="middle">operator UI · telemetry</text>
+    <text class="s" x="832" y="207" text-anchor="middle">mavlink-router fan-out</text>
+
+    <rect class="team" x="725" y="270" width="215" height="80" rx="10"/>
+    <text class="t" x="832" y="295" text-anchor="middle">Computer Vision</text>
+    <text class="s" x="832" y="312" text-anchor="middle">landslide / victim / target</text>
+    <text class="s" x="832" y="327" text-anchor="middle">detections</text>
+
+    <rect class="team" x="725" y="390" width="215" height="80" rx="10"/>
+    <text class="t" x="832" y="415" text-anchor="middle">Dynamic No-Fly Zones</text>
+    <text class="s" x="832" y="432" text-anchor="middle">hazard areas, sudden closures</text>
+
+    <rect class="team" x="725" y="510" width="215" height="80" rx="10"/>
+    <text class="t" x="832" y="535" text-anchor="middle">Navigation / avoidance</text>
+    <text class="s" x="832" y="552" text-anchor="middle">route flight · physical obstacle</text>
+    <text class="s" x="832" y="567" text-anchor="middle">avoidance (not Guardrail's job)</text>
+
+    <!-- interface contract box -->
+    <rect class="iface" x="655" y="640" width="285" height="96" rx="10"/>
+    <text class="t" x="797" y="664" text-anchor="middle">Interface contract (due 5 Jul)</text>
+    <text class="s" x="797" y="682" text-anchor="middle">format: YAML/JSON events (proposal ready)</text>
+    <text class="s" x="797" y="697" text-anchor="middle">update rate: NFZ ≤1 Hz · detections ~5 Hz</text>
+    <text class="s" x="797" y="712" text-anchor="middle">transport: GCS → REST/ROS 2 → hot-apply</text>
+    <text class="badge" x="797" y="728" text-anchor="middle" fill="#c9a227">TO AGREE WITH PROF. LAI TEAM</text>
+  </g>
+
+  <!-- ===================== flows ===================== -->
+  <!-- center spine -->
+  <path class="flow" d="M490,172 L490,200"/>
+  <path class="flow" d="M490,270 L490,298"/>
+  <path class="flow" d="M490,360 L490,388"/>
+  <path class="flow" d="M490,458 L490,486"/>
+  <path class="flow" d="M490,578 L490,606"/>
+  <path class="flow" d="M490,666 L490,694"/>
+  <path class="flow" d="M490,768 L490,796"/>
+
+  <!-- policy plane into compiler + shield -->
+  <path class="flowT" d="M255,193 C330,193 330,237 376,237"/>
+  <path class="flowT" d="M147,236 L147,282"/>
+  <path class="flowT" d="M255,321 C330,321 320,520 376,528"/>
+  <path class="flowT" d="M147,356 L147,402"/>
+
+  <!-- shield audit into verification -->
+  <path class="flowT" d="M380,556 C300,570 280,470 259,460"/>
+
+  <!-- camera into VLA (from drone, up right side of center) -->
+  <path class="flowB" d="M604,820 C660,820 660,438 604,430"/>
+  <text class="s" x="668" y="470" fill="#2f6fb0">camera ≥10 Hz</text>
+
+  <!-- Lai team feeds -->
+  <path class="flowB" d="M725,310 C640,310 480,300 320,313 C280,316 270,318 258,320"/>
+  <path class="flowB" d="M725,430 C560,430 320,400 259,330"/>
+  <text class="s" x="560" y="288" fill="#2f6fb0">detections → policy events</text>
+  <text class="s" x="588" y="382" fill="#2f6fb0">NFZ updates → hot-apply</text>
+
+  <!-- GCS telemetry down to mavlink -->
+  <path class="flowB" d="M832,230 C832,250 700,600 604,634"/>
+  <text class="s" x="740" y="600" fill="#2f6fb0">telemetry (parallel)</text>
+
+  <!-- ===================== bottom: evidence strip ===================== -->
+  <rect x="40" y="880" width="900" height="118" rx="10" fill="#f7fbfc" stroke="#249DB2" stroke-width="1.5"/>
+  <text x="60" y="908" font-size="14" font-weight="700" fill="#1a7f94">Prototype evidence (AirSim, 2026-07-03) — same reckless VLA stub in all three runs</text>
+  <text class="s" x="60" y="932">1. Shield OFF: cuts through no-fly zone — 3.5 s inside → P0 KPI FAIL (the problem, reproduced on demand)</text>
+  <text class="s" x="60" y="952">2. Shield ON: slides along zone edge, mission still completes — 0.0 s inside → P0 KPI PASS (201 repairs, 0 brakes)</text>
+  <text class="s" x="60" y="972">3. Shield ON + dynamic NFZ hot-applied at t=8 s: policy generation 0→1, hash changes, drone reroutes around both zones → PASS</text>
+  <text class="s" x="60" y="990" font-style="italic">Artifacts per run: trajectory plot · KPI report · JSONL audit (policy_hash on every record) · drone-camera frames · compiled YAML prompt</text>
+
+  <!-- footer -->
+  <text x="490" y="1030" text-anchor="middle" font-size="12" fill="#666">Locked principles: flight stack untouched (ROS · MAVLink · GeoFence · ArduPilot/PX4) · VLA output = 4-D body-frame action @10 Hz ·</text>
+  <text x="490" y="1048" text-anchor="middle" font-size="12" fill="#666">Shield emits only re-checked-safe actions (P0 escape = 0 by construction) · every artefact carries policy_hash for replay</text>
+  <text x="490" y="1080" text-anchor="middle" font-size="11.5" fill="#999">Next: interface agreement (CV / dynamic NFZ) → ArduPilot SITL + MAVROS 2 path (Fase 4) → real VLA backend in the swappable slot</text>
+</svg>

@@ -41,6 +41,7 @@ class RepairConfig:
     lateral_threshold_m: float = 2.0  # theta (lateral) from the FSM defaults
     vertical_threshold_m: float = 0.5  # theta (vertical)
     outward_margin_m: float = 1.0
+    escape_speed_mps: float = 2.0  # recovery speed for GeofenceEscape
 
 
 @dataclass
@@ -112,6 +113,15 @@ class LateralProjection:
         if rec is None:
             return action, RepairAttempt(self.name, "skip", "rule not a polygon")
 
+        # LateralProjection owns *approaching* trajectories. A vehicle that is
+        # already inside the polygon is handed to GeofenceEscape instead — this
+        # operator's depth-based magnitude would always exceed the cap there and
+        # trigger an escalation/brake that locks the violation in place.
+        if ir.signed_distance(rec, state.lat, state.lon) < 0:
+            return action, RepairAttempt(
+                self.name, "skip", "vehicle inside; recovery operator owns this"
+            )
+
         # deepest predicted penetration into this polygon over the horizon
         origin_xy = ir.projection.to_xy(state.lat, state.lon)
         depth, deep_lat, deep_lon = 0.0, violation.hit_lat, violation.hit_lon
@@ -152,8 +162,51 @@ class LateralProjection:
         return new, RepairAttempt(self.name, "ok", magnitude_m=depth)
 
 
-# Priority order — cheapest / most-local first.
-DEFAULT_STACK: list[RepairOperator] = [AltitudeClamp(), LateralProjection()]
+class GeofenceEscape:
+    """Drive a vehicle already *inside* a polygon straight out to the nearest exit.
+
+    Where ``LateralProjection`` slides an *approaching* trajectory off the fence
+    (a correction sized under the lateral threshold), this operator handles the
+    complementary case the threshold was never meant to cover: a vehicle that is
+    already deep inside a zone. Its penetration depth is large by construction,
+    so the magnitude cap that protects ``LateralProjection`` from over-correcting
+    would reject it and the Shield would brake — and braking while inside locks
+    the violation forever. We therefore flag this as a *recovery* operator
+    (``recovery = True``): the repair loop exempts recovery operators from the
+    magnitude cap, because their large magnitude is the point.
+
+    The emitted action flies toward the nearest boundary point at a moderate,
+    envelope-safe speed (capped against the kinematic budget, defaulting low).
+    ``magnitude_m`` is the current penetration depth (the position error being
+    recovered), reported for the audit log even though it is not capped.
+    """
+
+    name = "GeofenceEscape"
+    recovery = True
+    _escape_speed_mps = 2.0
+
+    def repair(self, action, violation, ir, state, cfg):  # type: ignore[no-untyped-def]
+        if violation.category != "geometric":
+            return action, RepairAttempt(self.name, "skip", "not a geometric violation")
+        rec = next((p for p in ir.polygons if p.id == violation.rule_id), None)
+        if rec is None:
+            return action, RepairAttempt(self.name, "skip", "rule not a polygon")
+        # only applies when the vehicle is actually inside; otherwise LateralProjection owns it
+        if ir.signed_distance(rec, state.lat, state.lon) >= 0:
+            return action, RepairAttempt(self.name, "skip", "vehicle not inside the polygon")
+
+        ox, oy = ir.outward_normal_enu(rec, state.lat, state.lon)  # toward nearest exit
+        speed = min(self._escape_speed_mps, cfg.escape_speed_mps)
+        ve, vn = ox * speed, oy * speed
+        new_body = enu_to_body(ve, vn, action.vz, state.yaw_rad)
+        depth = abs(ir.signed_distance(rec, state.lat, state.lon))
+        new = Action4D(vx=new_body.vx, vy=new_body.vy, vz=action.vz, yaw_rate=action.yaw_rate)
+        return new, RepairAttempt(self.name, "ok", magnitude_m=depth)
+
+
+# Priority order — cheapest / most-local first; recovery last among geometric
+# handlers so projection still gets first dibs on approaching trajectories.
+DEFAULT_STACK: list[RepairOperator] = [AltitudeClamp(), LateralProjection(), GeofenceEscape()]
 
 
 def repair_action(
@@ -184,18 +237,25 @@ def repair_action(
             new, att = op.repair(current, target, ir, state, cfg)
             att = RepairAttempt(att.operator, att.result, att.reason, att.magnitude_m, it)
             if att.result == "ok":
-                cap = (
-                    cfg.vertical_threshold_m
-                    if target.category == "envelope"
-                    else cfg.lateral_threshold_m
-                )
-                if att.magnitude_m > cap:
-                    attempts.append(
-                        RepairAttempt(
-                            att.operator, "fail", "magnitude over cap", att.magnitude_m, it
-                        )
+                # Recovery operators (e.g. GeofenceEscape for an inside vehicle)
+                # are exempt from the magnitude cap: their large magnitude is the
+                # penetration depth being recovered, which projection thresholds
+                # were never meant to govern. Capping them would re-introduce the
+                # "brake while inside = deadlock" failure.
+                is_recovery = getattr(op, "recovery", False)
+                if not is_recovery:
+                    cap = (
+                        cfg.vertical_threshold_m
+                        if target.category == "envelope"
+                        else cfg.lateral_threshold_m
                     )
-                    return RepairOutcome(current, attempts, converged=False)
+                    if att.magnitude_m > cap:
+                        attempts.append(
+                            RepairAttempt(
+                                att.operator, "fail", "magnitude over cap", att.magnitude_m, it
+                            )
+                        )
+                        return RepairOutcome(current, attempts, converged=False)
                 attempts.append(att)
                 current = new
                 applied = True

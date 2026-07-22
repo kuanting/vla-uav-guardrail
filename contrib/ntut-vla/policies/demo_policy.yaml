@@ -1,0 +1,39 @@
+# Demo policy — mini version of the grant's "Worked DSL example".
+# Local frame: x = meters North of start, y = meters East. Altitude = m above ground.
+policy_id: fase3-demo
+version: 0.1.0
+
+constraints:
+  # Square no-fly zone centered on (15, 15), 16 m per side.
+  - id: nfz-square
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - { x: 7,  y: 7 }
+      - { x: 23, y: 7 }
+      - { x: 23, y: 23 }
+      - { x: 7,  y: 23 }
+    altitude_floor_m: 0
+    altitude_ceiling_m: 100
+    margin_m: 1.0
+
+  # Fly between 2 m and 6 m above ground.
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 2
+    alt_max_m: 6
+
+  # Speed / climb / yaw caps.
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 4.0
+    climb_rate_max_mps: 2.0
+    yaw_rate_max_dps: 45.0

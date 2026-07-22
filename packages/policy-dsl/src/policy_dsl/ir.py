@@ -91,12 +91,53 @@ class PolicyIR:
         boundary_pt = nearest_points(rec.polygon.exterior, p)[0]
         bx, by = boundary_pt.x, boundary_pt.y
         if margin_m > 0:
-            dx, dy = bx - x, by - y
-            norm = (dx * dx + dy * dy) ** 0.5
-            if norm > 1e-9:
-                bx += (dx / norm) * margin_m
-                by += (dy / norm) * margin_m
+            ox, oy = self.outward_normal_enu(rec, lat, lon)
+            bx += ox * margin_m
+            by += oy * margin_m
         return self.projection.to_latlon(bx, by)
+
+    def outward_normal_enu(
+        self, rec: PolygonRecord, lat: float, lon: float
+    ) -> tuple[float, float]:
+        """Unit outward normal ``(east, north)`` toward the nearest way out of the polygon.
+
+        Points from the query point toward the nearest boundary point — i.e. the
+        direction to fly to *leave* the polygon. Degenerate (query point on the
+        boundary, norm ~ 0) falls back to the direction away from the centroid.
+
+        This is the geometric primitive the trend-aware checker and the
+        ``GeofenceEscape`` repair operator share; keeping it on the IR preserves
+        the "one geometry code path" invariant.
+        """
+        x, y = self.projection.to_xy(lat, lon)
+        p = Point(x, y)
+        boundary_pt = nearest_points(rec.polygon.exterior, p)[0]
+        ox, oy = boundary_pt.x - x, boundary_pt.y - y
+        norm = (ox * ox + oy * oy) ** 0.5
+        if norm < 1e-9:
+            c = rec.polygon.centroid
+            ox, oy = x - c.x, y - c.y
+            norm = (ox * ox + oy * oy) ** 0.5 or 1.0
+        return (ox / norm, oy / norm)
+
+    def outward_from_centre_enu(
+        self, rec: PolygonRecord, lat: float, lon: float
+    ) -> tuple[float, float]:
+        """Unit ``(east, north)`` from the polygon centroid toward the query point.
+
+        Unambiguous "which way is out" for a vehicle already inside: the centroid
+        is a single fixed point, so the direction is well-defined even when the
+        vehicle sits exactly at the centre (where several equidistant boundary
+        walls compete and ``outward_normal_enu`` can flip between them). Used by
+        the trend-aware checker to decide whether an inside vehicle is escaping.
+        """
+        x, y = self.projection.to_xy(lat, lon)
+        c = rec.polygon.centroid
+        ox, oy = x - c.x, y - c.y
+        norm = (ox * ox + oy * oy) ** 0.5
+        if norm < 1e-9:
+            return (1.0, 0.0)  # exactly on centroid: pick an arbitrary out-axis
+        return (ox / norm, oy / norm)
 
 
 def build_ir(doc: PolicyDoc) -> PolicyIR:

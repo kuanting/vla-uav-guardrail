@@ -1,0 +1,35 @@
+policy_id: gui-mission
+version: 0.1.0
+constraints:
+- id: gui-nfz-1
+  type: polygon_fence
+  constraint_type: hard
+  priority: P0
+  violation_action: repair
+  vertices:
+  - x: -6.5
+    y: 6.0
+  - x: 24.5
+    y: 6.0
+  - x: 24.5
+    y: 39.2
+  - x: -6.5
+    y: 39.2
+  altitude_floor_m: 0
+  altitude_ceiling_m: 60
+  margin_m: 1.0
+- id: alt-band-urban
+  type: altitude_envelope
+  constraint_type: hard
+  priority: P0
+  violation_action: repair
+  alt_min_m: 15
+  alt_max_m: 25
+- id: kin-caps
+  type: kinematic_envelope
+  constraint_type: hard
+  priority: P1
+  violation_action: repair
+  speed_max_mps: 4.0
+  climb_rate_max_mps: 2.0
+  yaw_rate_max_dps: 45.0

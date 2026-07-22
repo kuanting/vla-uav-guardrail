@@ -1,0 +1,39 @@
+# SITL flight demo policy. ArduPilot SITL default home is at
+# -35.363261, 149.165230 (the standard Australia test field), local NED frame.
+# Mission: take off, fly north. A square P0 NFZ sits ~15 m north of home across
+# the direct path, so a reckless straight-line VLA drives into it.
+policy_id: sitl-flight-demo
+version: 0.1.0
+generation: 0
+issued_at: 2026-07-09T00:00:00Z
+
+constraints:
+  - id: nfz-block
+    type: polygon_fence
+    constraint_type: hard
+    scope: global
+    priority: P0
+    layer: site
+    violation_action: project_fix
+    geometry:
+      # ~15 m north of home, 20 m square. The mission target is ~40 m north, so
+      # the straight-line path clips this zone.
+      vertices:
+        - { lat: -35.36299, lon: 149.16510 }
+        - { lat: -35.36281, lon: 149.16510 }
+        - { lat: -35.36281, lon: 149.16536 }
+        - { lat: -35.36299, lon: 149.16536 }
+      altitude_floor_m: 0
+      altitude_ceiling_m: 200
+      altitude_ref: AGL
+
+  - id: envelope-default
+    type: altitude_envelope
+    constraint_type: soft
+    scope: global
+    priority: P1
+    layer: regulation
+    violation_action: brake
+    altitude_min_m: 3
+    altitude_max_m: 120
+    altitude_ref: AGL
