@@ -22,11 +22,10 @@ pymavlink bring-up — ported to the MAVROS service surface.
 from __future__ import annotations
 
 import math
-import sys
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 from geometry_msgs.msg import PoseStamped  # isort: skip
 from mavros_msgs.msg import State  # isort: skip
