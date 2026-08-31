@@ -1,0 +1,103 @@
+{
+  "_why": "The Chase camera resolution was raised to 1280x720 @ 20 Hz to improve the demo video, then backed off to 960x540 @ 20 Hz because the detector rate fell below its acceptance gate. demo/out/<tag>/metrics.json only ever holds the MOST RECENT flight, so the 1280x720 rung is recorded here before it is overwritten. The 960x540 rung is read live from metrics.json by the deck builder and must not be duplicated here.",
+  "_gate": {
+    "det_hz_min": 4.0,
+    "loop_hz_min": 9.5,
+    "source": "pre-registered in the implementation plan before the runs, not chosen after seeing them"
+  },
+  "_ladder": [
+    "960x540 @ 20 Hz",
+    "1280x720 @ 15 Hz",
+    "960x540 @ 15 Hz"
+  ],
+  "rungs": {
+    "1280x720@20": {
+      "chase_width": 1280,
+      "chase_height": 720,
+      "capture_interval_s": 0.05,
+      "date": "2026-08-18",
+      "verdict": "REJECTED - det_hz below 4.0 on all three scenarios",
+      "flights": {
+        "demo_follow":  {"ticks": 608, "flight_s": 70.0, "loop_hz": 8.69, "det_hz": 2.94, "det_hit_rate": 1.000, "frac_ticks_seen": 1.000, "sep_mean_m": 16.1, "frac_within_30m": 1.000, "interventions": 0, "nfz_s": 0.0, "alt_violation_s": 0.0, "p0_violation_escape_rate": 0.0},
+        "demo_traffic": {"ticks": 560, "flight_s": 69.9, "loop_hz": 8.01, "det_hz": 3.84, "det_hit_rate": 1.000, "frac_ticks_seen": 1.000, "sep_mean_m": 17.8, "frac_within_30m": 0.936, "interventions": 0, "nfz_s": 0.0, "alt_violation_s": 0.0, "p0_violation_escape_rate": 0.0},
+        "demo_nfz":     {"ticks": 525, "flight_s": 70.0, "loop_hz": 7.50, "det_hz": 3.96, "det_hit_rate": 0.736, "frac_ticks_seen": 0.863, "sep_mean_m": 40.2, "frac_within_30m": 0.360, "interventions": 0, "nfz_s": 0.0, "alt_violation_s": 0.0, "p0_violation_escape_rate": 0.0}
+      },
+      "video": {"width": 2560, "height": 720, "fps": 24.8, "seconds": 70.0, "megabytes": [161.4, 153.2, 130.2], "codec": "FMP4"}
+    }
+  },
+  "_conclusion": {
+    "finding": "Reducing the Chase capture improved detector rate by about 25 percent. Reducing the simulator window changed nothing. Neither reached the 4.0 Hz threshold.",
+    "det_hz_by_configuration": {
+      "chase_1280x720_window_1280x720": 2.94,
+      "chase_960x540_window_1280x720": 3.66,
+      "chase_960x540_window_960x540": 3.62
+    },
+    "loop_hz_by_configuration": {
+      "chase_1280x720_window_1280x720": 8.69,
+      "chase_960x540_window_1280x720": 8.79,
+      "chase_960x540_window_960x540": 8.85
+    },
+    "infer_ms_median_by_configuration": {
+      "chase_1280x720_window_1280x720": null,
+      "chase_960x540_window_1280x720": 286,
+      "chase_960x540_window_960x540": 287
+    },
+    "interpretation": "OWL-ViT inference held at 286-287 ms median across a 2.4x change in Chase pixels and a 1.8x change in window pixels. Neither capture resolution nor the simulator window is the binding consumer; both hypotheses were tested and rejected. See _inference_breakdown for what the cost actually is - the earlier reading of this invariance as 'fixed per-inference cost' was wrong, and is corrected there.",
+    "tracking_unaffected": "det_hit_rate 1.000 and frac_ticks_seen 1.000 on both tracking scenarios in every configuration. The threshold exists to protect tracking quality, and tracking quality was never degraded."
+  },
+  "_inference_breakdown": {
+    "_why": "Resolution tuning had been ruled out but nothing had said where the 287 ms goes. demo/follow_vlm.py now times the CPU preprocessing and the GPU forward pass separately (pre_ms, fwd_ms in flight_log.jsonl), and experiments/profile_owlvit.py measures the same split offline on an idle GPU at the detector's real 400x225 input.",
+    "date": "2026-08-20",
+    "idle_ms": {"total": 66.4, "preprocess_cpu": 26.7, "forward_gpu": 36.2, "host_to_device": 0.0, "postprocess": 0.9},
+    "in_flight_ms": {"total": 286.8, "preprocess_cpu": 44.0, "forward_gpu": 242.6, "_source": "demo_follow, 212 inferences"},
+    "inflation_over_idle": {"preprocess_cpu": 1.6, "forward_gpu": 6.7, "total": 4.3},
+    "finding": "The simulator starves the GPU, not the CPU. The forward pass inflates 6.7x under flight load while preprocessing inflates only 1.6x, and preprocessing is 15 percent of the in-flight cost against 40 percent when idle.",
+    "corrects": "An earlier conclusion that 287 ms was a fixed per-inference cost, drawn from its invariance to capture resolution. It is not fixed: it is 66 ms idle. The invariance meant only that the binding GPU consumer is the SCENE render, whose cost barely depends on the output resolutions being varied.",
+    "hypotheses_rejected": {
+      "H1_text_branch_recomputed_every_frame": "Refuted. Tokenising the constant query costs under 1 ms.",
+      "H2_cpu_resize_to_768": "Refuted as a lever. The resize is 4.6 ms, and the whole CPU side is 15 percent of the in-flight cost.",
+      "H_simulator_window": "Refuted by the third configuration: 1.8x fewer window pixels changed det_hz by 0.04 Hz."
+    },
+    "levers_tested_after_the_breakdown": {
+      "_method": "One 70 s demo_follow flight per configuration, everything else held fixed.",
+      "unreal_scalability_sg1": {
+        "det_hz": 3.53, "forward_ms": 246.3,
+        "against_baseline": {"det_hz": 3.48, "forward_ms": 242.6},
+        "verdict": "NO EFFECT. Inference was fractionally slower, not faster. The scene render is not the binding consumer, so lowering shadow, lighting and view-distance quality buys nothing. Predicted to help; it did not."
+      },
+      "fp16_forward_pass": {
+        "idle_ms": {"fp32": 40.1, "fp16": 33.6}, "speedup": 1.19,
+        "verdict": "NOT WORTH IT. OWL-ViT base is small enough that it is not compute-bound at fp32 on a 4080 SUPER, so half precision buys 19 percent for an accuracy risk."
+      },
+      "recording_rate": {
+        "_this_is_the_lever": true,
+        "record_20hz": {"det_hz": 3.48, "forward_ms": 242.6, "achieved_record_hz": 14.7},
+        "record_10hz": {"det_hz": 3.76, "forward_ms": 221.6, "achieved_record_hz": 7.6},
+        "record_off":  {"det_hz": 4.10, "forward_ms": 198.5, "achieved_record_hz": null},
+        "det_hit_rate": "1.000 in all three; frac_ticks_seen 1.000 in all three. Detection quality is untouched.",
+        "verdict": "The demo recorder is the single largest controllable consumer, worth about 0.6 Hz of detector rate. It is not the JPEG encoding: it pulls Chase and FrontCamera frames over RPC at the record rate, which forces the simulator to render and serialise extra captures. That is GPU work, which is why the FORWARD PASS moves with it - 242.6 to 198.5 ms - while capture RESOLUTION never mattered."
+      }
+    },
+    "conclusion_for_the_gate": "det_hz >= 4.0 is reachable today, by not recording. 4.10 Hz measured with recording off, against a 4.0 threshold. Recording is a deliverable, so this is a trade rather than a free win, and the right resolution is to stop doing both in one pass: fly measurement runs without --save-view, and fly demo runs with it and label them as demonstrations rather than measurements. An instrument that perturbs the measurement should not be attached during it.",
+    "levers_the_measurement_rules_out": [
+      "Caching or precomputing the text branch - under 1 ms.",
+      "Faster image preprocessing or a cheaper resize - 4.6 ms of a CPU side that is 15 percent of the in-flight cost.",
+      "Further reductions in Chase capture or simulator window resolution.",
+      "Unreal scalability settings - tested, no effect.",
+      "fp16 - tested, 1.19x, not worth the accuracy risk."
+    ]
+  },
+  "_recorder_rate_defect": {
+    "found": "2026-08-20, once the recorder sidecar was written for the first time",
+    "detail": "The recorder targets 20 Hz and achieves 15.13 Hz, with late_or_failed = 0 because its resynchronisation threshold is 1.0 s and cannot see a steady 25 percent shortfall. It also outlives the mission clock: 1729 frames over 114.31 s of recorder life against a 70.0 s mission.",
+    "consequence_if_uncorrected": "frames / flight_seconds = 1729 / 70.0 = 24.7 fps against a true 15.13 fps capture rate, so a video written on that basis plays 1.63x faster than real time while being labelled real time.",
+    "fix": "The recorder now writes view/recorder.json with frames, seconds and achieved_hz, and tools/make_demo_video.py reads it in preference to any derivation."
+  },
+  "_isolation_measurement": {
+    "claim": "Roughly 1.8 Hz of the control-loop loss is the Chase camera's render and deserialisation cost, not Python.",
+    "evidence": "A flight with recording moved to its own thread AND writing zero frames still reached only 8.16 Hz, against a 10.0 Hz baseline taken before the resolution was raised.",
+    "baseline_hz": 10.0,
+    "recorder_inline_hz": 7.36,
+    "recorder_threaded_zero_frames_hz": 8.16
+  }
+}

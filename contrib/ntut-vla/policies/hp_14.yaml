@@ -1,0 +1,70 @@
+policy_id: random-scenario
+version: 0.1.0
+constraints:
+  - id: nfz-leg-1
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: -12.0, y: -7.0}
+      - {x: 4.0, y: -7.0}
+      - {x: 4.0, y: 9.0}
+      - {x: -12.0, y: 9.0}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: nfz-leg-2
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: -21.0, y: 27.0}
+      - {x: -5.0, y: 27.0}
+      - {x: -5.0, y: 43.0}
+      - {x: -21.0, y: 43.0}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: nfz-leg-3
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: -20.5, y: 1.0}
+      - {x: -4.5, y: 1.0}
+      - {x: -4.5, y: 17.0}
+      - {x: -20.5, y: 17.0}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: nfz-leg-4
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: -7.0, y: -31.0}
+      - {x: 9.0, y: -31.0}
+      - {x: 9.0, y: -15.0}
+      - {x: -7.0, y: -15.0}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 35
+    alt_max_m: 55
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 4.0
+    climb_rate_max_mps: 2.0
+    yaw_rate_max_dps: 45.0

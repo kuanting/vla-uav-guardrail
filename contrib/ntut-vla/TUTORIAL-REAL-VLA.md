@@ -1,3 +1,5 @@
+> **SUPERSEDED.** See `TUTORIAL.md` in the project root, which is the single verified guide. This file is kept as history only and its commands, tags and numbers may be out of date.
+
 # Tutorial — Flying the REAL VLA (OpenVLA-7B) Through the Guardrail
 
 This demo puts a **genuine 7-billion-parameter Vision-Language-Action model**

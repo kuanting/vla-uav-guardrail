@@ -1,0 +1,6 @@
+# VLA Drone Guardrail — core deps (Fase 3, pure-Python phase)
+# conda env: vla-drone (Python 3.11)
+pydantic>=2,<3
+pyyaml
+shapely
+numpy

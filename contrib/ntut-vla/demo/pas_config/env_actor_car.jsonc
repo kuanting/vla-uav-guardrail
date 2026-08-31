@@ -1,0 +1,55 @@
+// The demo's subject vehicle, as an ENVIRONMENT ACTOR rather than a spawned
+// object.
+//
+// Why this exists
+// ---------------
+// The car used to be moved by client-side teleport, one set_object_pose per
+// control tick. The motion model was fine - moving_car.py brakes into corners
+// under a lateral acceleration limit and accelerates out under a longitudinal
+// one - but it was being SAMPLED at the control loop's rate. Measured: 8.69 Hz
+// while moving, 54 cm steps, against a recorder capturing at 15.57 Hz, so 44 %
+// of frames during motion showed a position already shown. That is what read as
+// choppy.
+//
+// An environment actor takes a whole trajectory once, through
+// World.import_ned_trajectory() + EnvActor.set_trajectory(), and the SIMULATOR
+// interpolates it at its own render rate. The judder goes away by construction
+// rather than by out-running it, and it costs no per-frame RPC - which matters,
+// because scene motion and the detector share the simulator's RPC budget and
+// det_hz only just cleared its 4.0 Hz gate.
+//
+// A thread was tried first and rejected: the Project AirSim client is not
+// thread-safe, and driving poses from a second thread aborted the mission with
+// a pynng ConnectionReset. See
+// docs/FINDING-scene-motion-belongs-to-the-simulator.md.
+//
+// Links must reference an unreal_mesh by asset path, so the packaged rover body
+// is used rather than a glTF - spawn_object_from_file has no equivalent here.
+// The path follows the /PluginName/PathUnderContent convention: this mesh is
+// PASBlocks/Plugins/Rover/Content/OffroadCar/SM_Offroad_Body.uasset.
+{
+  "links": [
+    {
+      "name": "Body",
+      "collision": {
+        // The aircraft must never be stopped by the car it is following. The
+        // Shield keeps separation through the policy, which is where that
+        // decision belongs, and a physics collision here would instead show up
+        // as an unexplained flight abort.
+        "enabled": false
+      },
+      "visual": {
+        "geometry": {
+          "type": "unreal_mesh",
+          "name": "/Rover/OffroadCar/SM_Offroad_Body"
+        }
+      }
+    }
+  ],
+  "joints": []
+  // No "trajectory" block. The route is computed in Python from the same
+  // _Path model the old teleporting car used - rounded corners, cornering
+  // speed capped by lateral acceleration, braking and accelerating under a
+  // longitudinal limit - and uploaded at flight start. Baking a fixed path in
+  // here would freeze the route that --route and --car-speed are meant to vary.
+}

@@ -8,13 +8,47 @@ constraints:
   violation_action: repair
   vertices:
   - x: -6.5
-    y: 6.0
-  - x: 24.5
-    y: 6.0
-  - x: 24.5
-    y: 39.2
+    y: 25.5
+  - x: 12.5
+    y: 25.5
+  - x: 12.5
+    y: 40.0
   - x: -6.5
-    y: 39.2
+    y: 40.0
+  altitude_floor_m: 0
+  altitude_ceiling_m: 60
+  margin_m: 1.0
+- id: gui-nfz-2
+  type: polygon_fence
+  constraint_type: hard
+  priority: P0
+  violation_action: repair
+  vertices:
+  - x: -40.2
+    y: -9.0
+  - x: -32.0
+    y: -9.0
+  - x: -32.0
+    y: 5.5
+  - x: -40.2
+    y: 5.5
+  altitude_floor_m: 0
+  altitude_ceiling_m: 60
+  margin_m: 1.0
+- id: gui-nfz-3
+  type: polygon_fence
+  constraint_type: hard
+  priority: P0
+  violation_action: repair
+  vertices:
+  - x: -7.8
+    y: -38.2
+  - x: 2.0
+    y: -38.2
+  - x: 2.0
+    y: -30.0
+  - x: -7.8
+    y: -30.0
   altitude_floor_m: 0
   altitude_ceiling_m: 60
   margin_m: 1.0
@@ -23,8 +57,8 @@ constraints:
   constraint_type: hard
   priority: P0
   violation_action: repair
-  alt_min_m: 15
-  alt_max_m: 25
+  alt_min_m: 35
+  alt_max_m: 55
 - id: kin-caps
   type: kinematic_envelope
   constraint_type: hard

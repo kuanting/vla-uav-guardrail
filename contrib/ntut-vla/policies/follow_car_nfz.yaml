@@ -1,0 +1,87 @@
+# Follow-the-car policy WITH a no-fly zone across the car's route.
+#
+# This is the demo variant. `follow_car.yaml` shows that the aircraft can track a
+# moving target from a spoken description; this one shows what the guardrail is
+# for, because without a conflict the safety layer sits there recording zeros and
+# a viewer learns nothing from it.
+#
+# The fence spans the WHOLE corridor — x 26..54, y 2..16 — so there is no way
+# around it, only a way to wait. The car's circuit crosses it on both legs, about
+# 11 s of every 44 s lap.
+#
+# A first attempt fenced only the west leg (x 30..40). The drone simply tracked
+# the car on the east leg instead and never came within 2.4 m of the boundary:
+# 11 interventions, nothing to see. A rule the aircraft never meets demonstrates
+# nothing, so this one is unavoidable by construction.
+#
+# What this should look like: the drone tracks the car, reaches the fence, is
+# held at the boundary by the Shield (the HUD reads GUARDRAIL: correcting), the
+# car comes out the far side, and the drone re-acquires and carries on. Target
+# never lost, rule never broken.
+policy_id: follow-car-nfz
+version: 0.1.0
+constraints:
+  - id: nfz-route
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: 26, y: 2}
+      - {x: 54, y: 2}
+      - {x: 54, y: 16}
+      - {x: 26, y: 16}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+
+  # 3.0 m, lowered from 5.0 when the occupancy map stopped being empty.
+  #
+  # The map used to be built by collapsing voxels over 15-55 m AGL, while these
+  # demos cruise at 9 m. Everything shorter than 15 m - traffic lights, signs,
+  # tree canopies - was therefore invisible to the Shield, which is why a flight
+  # struck street furniture at (48.3, -0.9) while the map reported 7.4 m of
+  # clearance there. Rebuilt over 6-14 m, matching this policy's altitude
+  # envelope, the same point measures 1.8 m.
+  #
+  # With that furniture present a 5 m ring is not satisfiable on these streets:
+  # at y = 20 the widest free point across the road carries only 5.2 m. The old
+  # 5 m looked like the larger safety margin, but it was a bigger number
+  # protecting against less. 3 m around a pole that is actually in the map is
+  # the stronger constraint.
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 3.0
+    soft_margin_m: 2.0
+
+  # Low, because the camera geometry demands it: the front camera is pitched
+  # 20 deg down with a 29.4 deg vertical half-FOV, so it sees ground from
+  # 0.86 x altitude outward. Horizontal, that figure was 1.79 x altitude and the
+  # car left frame exactly when the drone got close.
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 6
+    alt_max_m: 14
+
+  # Above the car's 3 m/s so following is physically possible; a cap at or below
+  # the target's speed would make a failure to keep up meaningless.
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 5.0
+    climb_rate_max_mps: 2.0
+    # Named in deg/s, and the action carries rad/s. These were compared directly
+    # at three sites in guardrail/shield.py, which made the effective cap
+    # 45 rad/s = 2578 deg/s, so the rule could never fire. FIXED: the conversion
+    # now happens at the boundary. The worst yaw rate commanded across the demo
+    # flights is 11.8 deg/s against this 45 deg/s cap, so no recorded flight
+    # changes behaviour as a result of the fix.
+    yaw_rate_max_dps: 45.0

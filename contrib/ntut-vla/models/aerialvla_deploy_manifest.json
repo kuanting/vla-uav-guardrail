@@ -1,0 +1,18 @@
+{
+  "model": "AerialVLA fine-tuned (ours)",
+  "base": "D:/models/openvla-7b (4-bit NF4)",
+  "adapter": "D:/models/aerialvla-ft/run2/epoch1",
+  "adapter_params": {"yaw_gain": 0.4, "goal_blend": 0.55, "dv_h": 0.3, "dv_z": 0.15},
+  "training": {
+    "recipe": "QLoRA (r=64 LLM proj + full projector), lr 2e-5, 2 epochs, 53.5 min on RTX 4080 SUPER",
+    "data": "dataset/aerialvla_ft_v2 - 1,961 self-collected AirSimNH expert samples, 48% turning",
+    "loss": "1.82 -> 0.24 (see training/ft_loss_log.csv, run2)"
+  },
+  "eval_deploy_config_5eps_random_targets": {
+    "reached_rate": 1.0, "mean_efficiency": 0.996,
+    "mean_shield_interventions": 43.6, "nfz_seconds": 0.0,
+    "baseline_comparison": {"reached": 1.0, "efficiency": 0.942, "interventions": 108}
+  },
+  "usage": "python demo/aerialvla_demo.py --adapter D:/models/aerialvla-ft/run2/epoch1 --yaw-gain 0.4 --goal-blend 0.55 --dv-h 0.3",
+  "date": "2026-07-17"
+}

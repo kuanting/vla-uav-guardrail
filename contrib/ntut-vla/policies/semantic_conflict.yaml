@@ -1,0 +1,83 @@
+# Policy for the VLA/Guardrail coexistence experiment (demo/semantic_seek.py).
+#
+# The scene is deliberately minimal. The drone spawns at (35, -20) inside the
+# free corridor x in [28, 50], which runs the full length of the map, and the
+# semantic target is placed at (38, 26). `nfz-target` sits across that corridor
+# between the two, so the VLA's chosen heading and the guardrail's permitted
+# track disagree for a sustained window instead of a single instant.
+#
+# Only ONE fence, on purpose. The other nfz-edge-* zones from urban_clearance
+# would make it ambiguous which rule caused any given deflection.
+#
+# obstacle_clearance is kept, but the corridor is open ground so it should
+# rarely fire. That is the point: any deflection observed in the conflict window
+# is attributable to the fence alone. If the clearance rule turns out to be
+# firing often, the run is not measuring what it claims to.
+policy_id: semantic-conflict
+version: 0.1.0
+constraints:
+  - id: nfz-target
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    # x 29..41, not the 32..44 box borrowed from urban_clearance. Measured: the
+    # aircraft's natural track crosses this y band at x = 31.1..31.4, so the old
+    # box missed it by 0.6 m and the unshielded control flew straight past the
+    # zone instead of into it — which left the "is the guardrail what keeps it
+    # out?" question untestable.
+    #
+    # A fence has to be genuinely in the way AND leave a legal way round. With
+    # >=5 m building clearance the corridor is x 30..50, so this box blocks the
+    # flown line and leaves x 42..50 (8 m) as a routable detour.
+    vertices:
+      - {x: 29, y: 5}
+      - {x: 41, y: 5}
+      - {x: 41, y: 17}
+      - {x: 29, y: 17}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 5.0
+    soft_margin_m: 2.0
+
+  # 18-30 m, well below the 35-55 m band the coordinate demos use. The front
+  # camera is horizontal with a 29.2 deg vertical half-FOV, so a ground object
+  # only enters the image beyond 1.79 x altitude. Cruising at 45 m would put the
+  # target out of frame until 80 m away, where it is a handful of pixels, and
+  # the experiment would return a null for optical reasons alone.
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 18
+    alt_max_m: 30
+
+  # NOTE, and do not "fix" this here: yaw_rate_max_dps is named in degrees per
+  # second, but Action4D.yaw_rate is handed straight to move_by_velocity_async,
+  # which consumes rad/s. The VLA emits at most +/-1.1 rad/s scaled by yaw_gain
+  # 0.4, so |yaw_rate| never exceeds 0.44 and this threshold has never fired in
+  # any Project AirSim run in this repo.
+  #
+  # That inertness is load-bearing for this experiment. Every other repair
+  # operator passes yaw_rate through untouched (shield.py:517, :599, :657), so
+  # with this cap inert the heading channel is authored entirely by the VLA and
+  # the translation channel entirely by the Shield. That separation is what makes
+  # simultaneity checkable per tick. Correcting the unit is a separate task; done
+  # here it would both invalidate every existing result and let the Shield start
+  # editing yaw, destroying the property being measured.
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 4.0
+    climb_rate_max_mps: 2.0
+    yaw_rate_max_dps: 45.0

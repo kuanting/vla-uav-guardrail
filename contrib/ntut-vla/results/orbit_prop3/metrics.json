@@ -1,0 +1,35 @@
+{
+ "tag": "orbit_prop3",
+ "ticks": 893,
+ "object": "a white car",
+ "detector": "google/owlvit-base-patch32",
+ "det_seen": 268,
+ "det_missed": 75,
+ "det_hit_rate": 0.781,
+ "det_hz": 3.84,
+ "frac_ticks_seen": 0.865,
+ "mode_frac": {
+  "track": 0.865,
+  "coast": 0.078,
+  "search": 0.057,
+  "scan": 0.0
+ },
+ "sep_min_m": 14.9,
+ "sep_mean_m": 122.1,
+ "sep_end_m": 176.1,
+ "frac_within_30m": 0.118,
+ "nfz_s": 0.0,
+ "nfz_entered": false,
+ "alt_violation_s": 0.0,
+ "interventions": 139,
+ "frac_absent": 0.719,
+ "nfz_hold_ticks": 0,
+ "params": {
+  "yaw_gain": 1.2,
+  "want_width": 0.1,
+  "speed_max": 4.0,
+  "cruise_alt": 18.0,
+  "alt_gain": 0.6,
+  "det_thresh": 0.008
+ }
+}

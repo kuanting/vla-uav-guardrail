@@ -147,7 +147,7 @@ def main() -> int:
     else:
         vla = StubVLA(mission)
     shield = Shield(policy, lookahead_s=3.0, dt=0.5)
-    audit = AuditLogger(out / "audit.jsonl", policy.policy_hash)
+    audit = AuditLogger(out / "audit.jsonl", policy)   # the POLICY, so a hot-applied rule restamps the hash
 
     if args.api:
         from guardrail.api import serve_in_background

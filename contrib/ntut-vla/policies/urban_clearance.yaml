@@ -1,0 +1,103 @@
+# edge_patrol + a HARD obstacle-clearance rule.
+#
+# obstacle_clearance is the only constraint that needs runtime data: the Shield
+# must be built with obstacle_map=<city occupancy grid> or the rule stays inert
+# (the demo wires this automatically from --citymap).
+#
+# min_clearance_m is measured to the nearest occupied CELL CENTRE of a res=2 m
+# grid, so the building face can be up to 1 m closer than the number says;
+# 5.0 m here therefore buys ~4 m of guaranteed metal-to-wall gap.
+#
+# It is a RING, not an approach standoff. The Shield checks it over a forecast
+# sized by the braking distance (one control step of reaction + v^2/2a at
+# a = 3 m/s^2), so the point where the rule starts to bite on a head-on run is
+# roughly min_clearance_m + 0.5*v + v^2/6 -- about 9.7 m at the 4 m/s cap, and
+# less as the repair's taper slows the vehicle down. Do NOT read the horizon off
+# lookahead_s: scanning the full 3 s geofence horizon at constant velocity would
+# make that number min_clearance_m + v*lookahead_s = 17 m, wider than the
+# planner's own corridor, and the Shield would then fight every route it was
+# given (measured: 95% of ticks braked, every route stalled).
+#
+# Keep the planner's inflation (demo default --clearance 6.0 m) >= this value:
+# the planned corridor is what keeps the Shield quiet on a nominal path, so the
+# rule only fires when the VLA drifts off it. Buildings are infinitely tall
+# columns in a 2-D occupancy grid, so this rule constrains the HORIZONTAL track
+# at every altitude -- flying over a building counts as a violation, and the
+# repair steers around rather than climbing over.
+policy_id: urban-clearance-patrol
+version: 0.1.0
+constraints:
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 5.0
+    soft_margin_m: 2.0
+  - id: nfz-edge-1
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: 32, y: 5}
+      - {x: 44, y: 5}
+      - {x: 44, y: 17}
+      - {x: 32, y: 17}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: nfz-edge-2
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: 36, y: -6}
+      - {x: 48, y: -6}
+      - {x: 48, y: 6}
+      - {x: 36, y: 6}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: nfz-edge-3
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: -6, y: -48}
+      - {x: 6, y: -48}
+      - {x: 6, y: -36}
+      - {x: -6, y: -36}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: nfz-edge-4
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: -48, y: -6}
+      - {x: -36, y: -6}
+      - {x: -36, y: 6}
+      - {x: -48, y: 6}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 35
+    alt_max_m: 55
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 4.0
+    climb_rate_max_mps: 2.0
+    yaw_rate_max_dps: 45.0

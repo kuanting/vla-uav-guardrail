@@ -1,0 +1,18 @@
+{
+  "iteration": 2,
+  "config": {
+    "eps": 8000,
+    "hidden": 256,
+    "depth": 3,
+    "epochs": 100,
+    "dagger": 0.2
+  },
+  "metrics": {
+    "reach_rate": 0.975,
+    "nfz_entry_rate": 0.005,
+    "shielded_reach_rate": 1.0,
+    "intervention_rate": 0.04160787160548809,
+    "mean_time_s": 9.062564102564103
+  },
+  "val_mse": 0.0007421904592774808
+}

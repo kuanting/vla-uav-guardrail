@@ -1,3 +1,5 @@
+> **SUPERSEDED.** See `TUTORIAL.md` in the project root, which is the single verified guide. This file is kept as history only and its commands, tags and numbers may be out of date.
+
 # One-Click Demo Guide — Fine-Tuned VLA + Guardrail
 
 Everything below runs the FULL stack automatically — simulator, fine-tuned
@@ -19,7 +21,7 @@ cd "D:\OneDrive\College\S2-TaipeiTech\Lab\VLA Drone"
 What it does, in order (fully automatic, ~6-8 min total):
 1. Kills any old simulator, launches Project AirSim (UE 5.7) with the chosen
    map — **map load takes ~2 min**, the script waits for server port 8989.
-2. Loads OUR fine-tuned model (`D:\models\aerialvla-ft\run2\epoch1`, 4-bit,
+2. Loads the ORIGINAL AerialVLA adapter (`D:\models\aerialvla-lora\aero_vla`, 4-bit,
    ~5.6 GB VRAM, ~25 s load).
 3. Flies the route: VLA sees front+down cameras -> depth avoidance layer ->
    rate limiter -> Safety Shield -> sim. 10 Hz control.

@@ -1,0 +1,76 @@
+# Following a person, with the stand-off as a RULE rather than a setpoint.
+#
+# This is the policy the 2026-08-19 review asked for: "hold 10 m from a person,
+# and different policies for different objects". Until now that distance was
+# `--want-range`, a command-line flag on the controller - which meant it was not
+# hashed into policy_hash, never appeared in the audit log, and was not enforced
+# by the Shield. It was a number the pilot was asked to aim for, not one it was
+# held to. If the controller drifted, nothing stopped it and nothing recorded it.
+#
+# As a SubjectStandoff it is none of those things. It is hashed, audited, and
+# checked on every tick against a 3 s forecast, and a breach is repaired by
+# removing the closing component of velocity - the aircraft may still circle the
+# subject at the held range, it simply may not approach.
+#
+# Two rules, deliberately different, because that is the point:
+#   - a pedestrian gets 10 m
+#   - anything else gets 5 m
+# The tighter rule binds only when the perception stack reports the subject as a
+# pedestrian, via Shield.set_subject(x, y, "pedestrian").
+policy_id: follow-pedestrian
+version: 0.1.0
+constraints:
+  - id: standoff-pedestrian
+    type: subject_standoff
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    subject_class: pedestrian
+    min_range_m: 10.0
+    soft_margin_m: 2.0
+
+  # The general case. "*" binds to whatever is being tracked, including a
+  # subject the detector could not classify, so there is no gap between the
+  # named classes where no stand-off applies at all.
+  - id: standoff-any
+    type: subject_standoff
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    subject_class: "*"
+    min_range_m: 5.0
+    soft_margin_m: 1.0
+
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 5.0
+    soft_margin_m: 2.0
+
+  # Lower than the car policy's 6-14 m band. A 0.5 m-wide subject has to be
+  # much closer to the camera than a 4 m car to occupy the same fraction of the
+  # frame, and the front camera only sees ground from about 0.86 x altitude
+  # outward - at 9 m that blind spot is 7.7 m, which is inside the 10 m
+  # stand-off this policy enforces. Flying lower keeps the subject both outside
+  # the blind spot and inside the stand-off.
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 4
+    alt_max_m: 10
+
+  # A pedestrian walks at about 1.4 m/s, so the cap that made following a 2.5 m/s
+  # car possible is far more than is needed here. Lower is also safer near a
+  # person: it shortens the distance covered inside one Shield lookahead.
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 3.0
+    climb_rate_max_mps: 1.5
+    yaw_rate_max_dps: 45.0

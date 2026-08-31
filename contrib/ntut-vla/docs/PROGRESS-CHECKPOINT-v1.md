@@ -28,7 +28,7 @@ Global Planner (A*)  →  Depth Avoidance  →  Rate Limiter  →  Safety Shield
 | Area | File(s) | State |
 |---|---|---|
 | Guardrail core | `guardrail/` (shield, compiler, geometry, audit, models) | frozen v1 |
-| Fine-tuned model | `D:\models\aerialvla-ft\run2\epoch1` + `models/aerialvla_deploy_manifest.json` | **production** |
+| Fine-tuned model | `D:\models\aerialvla-ft\run2\epoch1` + `models/aerialvla_deploy_manifest.json` | **SUPERSEDED** — comparison arm only. It raised coordinate path efficiency 0.942→0.996 but lowered object-slot sensitivity 0.454→0.321, so every demo default now points at the original adapter. See `docs/FINDING-what-drives-aerialvla.md`. |
 | VLA flight (Project AirSim) | `demo/aerialvla_pas_demo.py` | v1 |
 | VLA flight (classic AirSim) | `demo/aerialvla_demo.py` | v1 |
 | Global planner | `demo/city_planner.py` + `demo/survey_city.py` + `demo/out/citymap/occ.npz` | v1 |

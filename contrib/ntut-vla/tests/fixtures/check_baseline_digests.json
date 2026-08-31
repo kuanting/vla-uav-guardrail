@@ -1,0 +1,31 @@
+{
+  "note": "sha256[:32] of guardrail.Shield._check output over 1200 seeded samples per policy; see tests/test_check_refactor.py",
+  "seed": 20260826,
+  "n_per_policy": 1200,
+  "digests": {
+    "demo_policy.yaml": "ff856dbccb56189a357bc92877666351",
+    "edge_patrol.yaml": "097ad51d8393a5656c83696f316ebbe8",
+    "follow_car.yaml": "30dcbd098bf0bc952e788a223b3628cc",
+    "follow_car_gap.yaml": "179a52ef11939f32d8281d0e255e1f51",
+    "follow_car_nfz.yaml": "3129bfc82948835c94afd0f22533ef36",
+    "follow_pedestrian.yaml": "f714b1812d3bb3da947a9e5e50464964",
+    "gui_high_test.yaml": "8afca4cfd48ed2f233076a92ae7ea54c",
+    "gui_policy.yaml": "aadf11f4694c71e3d8521375d5776af2",
+    "hard_11.yaml": "7b4a0ada9afbacab572113dc8eea2bf2",
+    "hard_21.yaml": "ffc9d5c5db5aab5a5f739e4f4863abe9",
+    "hard_3.yaml": "0c04a4d1720a974dcd8ddcbf1654c0e6",
+    "hp_14.yaml": "e4f59590fee13608996932f41b91b939",
+    "hp_30.yaml": "52e6f66ab4ed200e9b05e4eef02bb926",
+    "hp_42.yaml": "0f4dc3e64e4121d1b10522bb5e328cbb",
+    "hp_5.yaml": "699ca32de13d94a6783693492ec7a5c9",
+    "hp_8.yaml": "9aed70be76aa8bad8497a5d9c58e430d",
+    "orbit_building.yaml": "17302e4d5d6eb2844f45c0a1dffff89b",
+    "poly_test.yaml": "60753376196962cd65dc16df290b93bb",
+    "random_scenario.yaml": "d1ebd7081cd74cdd28d2439adde0ed73",
+    "rth_poly.yaml": "83ddb9517dd08da0277e9fe55cf6d62e",
+    "semantic_conflict.yaml": "d6ddd1eb94a631934df18a9b6b588036",
+    "sim_demo_policy.yaml": "1f95f53abed55a21c1393133eb16349e",
+    "urban_clearance.yaml": "75f5b19319c3d282c80fba9faceb86f5",
+    "urban_demo_policy.yaml": "1c3a96c4a6bbcadd7b2a04580f9e5dd2"
+  }
+}

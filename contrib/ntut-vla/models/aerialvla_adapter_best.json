@@ -1,0 +1,15 @@
+{
+ "reached": true,
+ "ticks": 249,
+ "nfz_s": 0.0,
+ "interventions": 235,
+ "path_len_m": 67.0,
+ "straight_m": 56.6,
+ "efficiency": 0.844,
+ "params": {
+  "yaw_gain": 0.4,
+  "goal_blend": 0.55,
+  "dv_h": 0.3,
+  "dv_z": 0.15
+ }
+}

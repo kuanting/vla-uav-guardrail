@@ -1,4 +1,4 @@
-# demo_compare_guardrail.ps1 — side-by-side: guardrail OFF vs ON, same route,
+﻿# demo_compare_guardrail.ps1 - side-by-side: guardrail OFF vs ON, same route,
 # same NFZ, on Project AirSim. Shows the guardrail's value as a direct A/B.
 #
 # Usage (from repo root):
@@ -18,7 +18,9 @@ $ROOT    = "D:\OneDrive\College\S2-TaipeiTech\Lab\VLA Drone"
 $PY      = "C:\Users\natha\.conda\envs\vla-real\python.exe"
 $UE      = "C:\Program Files\Epic Games\UE_5.7\Engine\Binaries\Win64\UnrealEditor.exe"
 $UPROJ   = "$ROOT\PASBlocks\Blocks.uproject"
-$ADAPTER = "D:/models/aerialvla-ft/run2/epoch1"
+# Original adapter. The fine-tune traded language grounding for coordinate
+# path efficiency -- see docs/FINDING-what-drives-aerialvla.md.
+$ADAPTER = "D:/models/aerialvla-lora/aero_vla"
 $POLICY  = "$ROOT\policies\gui_high_test.yaml"     # has an NFZ + 35-55 m band
 $CITYMAP = "$ROOT\demo\out\citymap\occ_$Map.npz"
 $MAPS = @{ day="/Game/JapaneseCity/Maps/Demo_day"; night="/Game/JapaneseCity/Maps/Demo_night";
@@ -51,7 +53,7 @@ function Fly($tag, $extra) {
 }
 
 Set-Location $ROOT
-Write-Host "A/B COMPARISON — guardrail OFF vs ON (map: $Map, route: $Route)" -ForegroundColor White
+Write-Host "A/B COMPARISON - guardrail OFF vs ON (map: $Map, route: $Route)" -ForegroundColor White
 Fly "compare_off" @("--no-shield")       # 1) NO guardrail -> should VIOLATE the NFZ
 Fly "compare_on"  @()                    # 2) guarded      -> should PASS (NFZ 0.0 s)
 Write-Host ""

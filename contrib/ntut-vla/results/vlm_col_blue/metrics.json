@@ -1,0 +1,27 @@
+{
+ "tag": "vlm_col_blue",
+ "ticks": 1076,
+ "object": "a blue car",
+ "detector": "google/owlvit-base-patch32",
+ "det_seen": 402,
+ "det_missed": 4,
+ "det_hit_rate": 0.99,
+ "det_hz": 3.77,
+ "frac_ticks_seen": 1.0,
+ "sep_min_m": 2.3,
+ "sep_mean_m": 68.5,
+ "sep_end_m": 90.3,
+ "frac_within_30m": 0.207,
+ "nfz_s": 0.0,
+ "nfz_entered": false,
+ "alt_violation_s": 0.0,
+ "interventions": 27,
+ "params": {
+  "yaw_gain": 1.2,
+  "want_width": 0.1,
+  "speed_max": 4.0,
+  "cruise_alt": 9.0,
+  "alt_gain": 0.6,
+  "det_thresh": 0.008
+ }
+}

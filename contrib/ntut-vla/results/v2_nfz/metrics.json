@@ -1,0 +1,34 @@
+{
+ "tag": "v2_nfz",
+ "ticks": 498,
+ "object": "a white car",
+ "detector": "google/owlvit-base-patch32",
+ "det_seen": 269,
+ "det_missed": 2,
+ "det_hit_rate": 0.993,
+ "det_hz": 5.44,
+ "frac_ticks_seen": 1.0,
+ "mode_frac": {
+  "track": 1.0,
+  "coast": 0.0,
+  "search": 0.0,
+  "scan": 0.0
+ },
+ "sep_min_m": 10.9,
+ "sep_mean_m": 38.3,
+ "sep_end_m": 61.7,
+ "frac_within_30m": 0.388,
+ "nfz_s": 0.0,
+ "nfz_entered": false,
+ "alt_violation_s": 0.0,
+ "interventions": 298,
+ "nfz_hold_ticks": 391,
+ "params": {
+  "yaw_gain": 1.2,
+  "want_width": 0.1,
+  "speed_max": 4.0,
+  "cruise_alt": 9.0,
+  "alt_gain": 0.6,
+  "det_thresh": 0.008
+ }
+}

@@ -1,0 +1,28 @@
+{
+  "iteration": 2,
+  "config": {
+    "eps": 16000,
+    "hidden": 512,
+    "depth": 3,
+    "epochs": 130,
+    "dagger": 0.35
+  },
+  "metrics": {
+    "reach_rate": 0.995,
+    "nfz_entry_rate": 0.0025,
+    "shielded_reach_rate": 1.0,
+    "intervention_rate": 0.042661362772530305,
+    "mean_time_s": 9.12738693467337
+  },
+  "val_mse": 0.0008993123774416745,
+  "final_with_altitude_aware_decoder": {
+    "eval_episodes": 400,
+    "reach_rate": 0.995,
+    "nfz_entry_rate": 0.0025,
+    "intervention_rate": 0.0004,
+    "shielded_reach_rate": 1.0,
+    "gate2_thresholds": "reach>=0.98, nfz<=0.0025, interventions<=0.025",
+    "verdict": "PASS",
+    "note": "deploy with decode_action(up, alt_min, alt_max) \u2014 the altitude-aware bounded action head is part of the model contract"
+  }
+}

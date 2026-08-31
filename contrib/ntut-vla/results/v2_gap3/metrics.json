@@ -1,0 +1,34 @@
+{
+ "tag": "v2_gap3",
+ "ticks": 568,
+ "object": "a white car",
+ "detector": "google/owlvit-base-patch32",
+ "det_seen": 293,
+ "det_missed": 2,
+ "det_hit_rate": 0.993,
+ "det_hz": 5.19,
+ "frac_ticks_seen": 1.0,
+ "mode_frac": {
+  "track": 1.0,
+  "coast": 0.0,
+  "search": 0.0,
+  "scan": 0.0
+ },
+ "sep_min_m": 4.5,
+ "sep_mean_m": 24.0,
+ "sep_end_m": 47.3,
+ "frac_within_30m": 0.759,
+ "nfz_s": 0.0,
+ "nfz_entered": false,
+ "alt_violation_s": 0.0,
+ "interventions": 12,
+ "nfz_hold_ticks": 67,
+ "params": {
+  "yaw_gain": 1.2,
+  "want_width": 0.2,
+  "speed_max": 4.0,
+  "cruise_alt": 13.0,
+  "alt_gain": 0.6,
+  "det_thresh": 0.008
+ }
+}

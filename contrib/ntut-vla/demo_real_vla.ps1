@@ -1,4 +1,4 @@
-# demo_real_vla.ps1 - fly the REAL OpenVLA-7B through the guardrail in AirSim.
+﻿# demo_real_vla.ps1 - fly the REAL OpenVLA-7B through the guardrail in AirSim.
 #
 # Usage:
 #   .\demo_real_vla.ps1                                        # default instruction

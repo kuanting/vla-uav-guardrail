@@ -1,0 +1,34 @@
+{
+ "tag": "vlm_sportscar",
+ "ticks": 506,
+ "object": "a white car",
+ "detector": "google/owlvit-base-patch32",
+ "det_seen": 234,
+ "det_missed": 0,
+ "det_hit_rate": 1.0,
+ "det_hz": 4.62,
+ "frac_ticks_seen": 1.0,
+ "mode_frac": {
+  "track": 1.0,
+  "coast": 0.0,
+  "search": 0.0,
+  "scan": 0.0
+ },
+ "sep_min_m": 2.1,
+ "sep_mean_m": 9.6,
+ "sep_end_m": 13.4,
+ "frac_within_30m": 0.996,
+ "nfz_s": 0.0,
+ "nfz_entered": false,
+ "alt_violation_s": 0.0,
+ "interventions": 0,
+ "nfz_hold_ticks": 0,
+ "params": {
+  "yaw_gain": 1.2,
+  "want_width": 0.1,
+  "speed_max": 4.0,
+  "cruise_alt": 9.0,
+  "alt_gain": 0.6,
+  "det_thresh": 0.008
+ }
+}

@@ -180,7 +180,7 @@ def main() -> int:
     policy = load_policy(args.policy)
     mission = ConstraintCompiler(policy).parse_command("fly to (40, 40) at 6 m/s altitude 20")
     shield = Shield(policy, lookahead_s=3.0, dt=0.5)
-    audit = AuditLogger(out / "audit.jsonl", policy.policy_hash)
+    audit = AuditLogger(out / "audit.jsonl", policy)   # the POLICY, so a hot-applied rule restamps the hash
     print(f"[policy] {policy.policy_id} {policy.policy_hash}")
     print(f"[task]   instruction = {args.instruction!r}")
 

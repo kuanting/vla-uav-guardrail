@@ -1,0 +1,72 @@
+# Policy for the "follow the car" mission (demo/semantic_seek.py --follow-car).
+#
+# Low and close, because the camera geometry forces it. FrontCamera is horizontal
+# with a 29.2 deg vertical half-FOV, so a ground object is only in frame beyond
+# 1.79 x altitude. Measured against a 4.5 m car:
+#
+#     altitude   range   in frame?   car width
+#        15 m     20 m      no        32 px
+#        15 m     30 m      yes       21 px
+#         9 m     15 m      no        43 px
+#         9 m     22 m      yes       29 px
+#         9 m     30 m      yes       21 px
+#
+# Anything high enough for a comfortable safety margin puts the car either out of
+# frame or down to ~20 px. 9 m cruise with the car 20-30 m ahead is the only
+# geometry where it is both visible and large enough to ground, so the band is
+# 6-14 m. That is genuinely low for a city street, and it is the mission's
+# constraint rather than a preference.
+#
+# No fence here: the question is whether the aircraft tracks the car, and a
+# no-fly zone would confound "did it stop because of the rule" with "did it lose
+# the car". Building clearance and the altitude band still bind, and the
+# kinematic caps still bound the speed it can chase at.
+policy_id: follow-car
+version: 0.1.0
+constraints:
+  # 3.0 m, lowered from 5.0 when the occupancy map stopped being empty.
+  #
+  # The map used to be built by collapsing voxels over 15-55 m AGL, while these
+  # demos cruise at 9 m. Everything shorter than 15 m - traffic lights, signs,
+  # tree canopies - was therefore invisible to the Shield, which is why a flight
+  # struck street furniture at (48.3, -0.9) while the map reported 7.4 m of
+  # clearance there. Rebuilt over 6-14 m, matching this policy's altitude
+  # envelope, the same point measures 1.8 m.
+  #
+  # With that furniture present a 5 m ring is not satisfiable on these streets:
+  # at y = 20 the widest free point across the road carries only 5.2 m. The old
+  # 5 m looked like the larger safety margin, but it was a bigger number
+  # protecting against less. 3 m around a pole that is actually in the map is
+  # the stronger constraint.
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 3.0
+    soft_margin_m: 2.0
+
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 6
+    alt_max_m: 14
+
+  # Speed cap above the car's 3 m/s so following is physically possible; a cap at
+  # or below the target's speed would make a failure to keep up meaningless.
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 5.0
+    climb_rate_max_mps: 2.0
+    # Named in deg/s, and the action carries rad/s. These were compared directly
+    # at three sites in guardrail/shield.py, which made the effective cap
+    # 45 rad/s = 2578 deg/s, so the rule could never fire. FIXED: the conversion
+    # now happens at the boundary. The worst yaw rate commanded across the demo
+    # flights is 11.8 deg/s against this 45 deg/s cap, so no recorded flight
+    # changes behaviour as a result of the fix.
+    yaw_rate_max_dps: 45.0

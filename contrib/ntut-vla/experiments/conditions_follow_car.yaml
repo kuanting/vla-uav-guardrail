@@ -1,0 +1,83 @@
+# "Follow the car" — the mission asked for in plain language.
+#
+# Two flights, and the pair is the point. One gives the model nothing but the
+# camera and the words "orange car"; the other additionally gives it the
+# coordinate-derived bearing phrase it was trained on. Comparing them separates
+# "the model cannot see the car" from "the model cannot act on language".
+#
+# The car is a built object, not an asset: this simulator ships no car. See
+# demo/moving_car.py for what it is and docs/FINDING-what-drives-aerialvla.md
+# for what that costs the interpretation.
+#
+# There is no no-fly zone in this policy. The question here is whether the
+# aircraft tracks a moving target; a fence would confound "stopped because of a
+# rule" with "lost the car". Building clearance and the altitude band still bind.
+
+experiment: follow-the-car
+version: 1
+seed: 20260804
+
+defaults:
+  policy: policies/follow_car.yaml
+  citymap: demo/out/citymap/occ_day.npz
+  target_xy: "38,-8"        # the car's start; per-tick truth is logged in flight
+  cruise_alt: 9.0
+  max_s: 120.0
+  yaw_gain: 0.4
+  dv_h: 0.3
+  dv_z: 0.15
+  hold_s: 1.5
+  fade_s: 3.0
+  follow_car: true
+  car_speed: 3.0
+  hint_mode: none
+
+adapters:
+  orig: D:/models/aerialvla-lora/aero_vla
+  ft:   D:/models/aerialvla-ft/run2/epoch1
+
+instructions:
+  match:    "orange car"     # matches the pixels; M_Orange is the only colour
+  mismatch: "blue car"       # same noun, wrong colour, identical pixels
+  absent:   ""
+
+cells:
+  # The mission as asked: camera + language only.
+  - {tag: follow_none,  block: N, adapter: orig, instr: match, scene: present, guard: "on", beta: 0, hint_mode: none}
+  # Same flight, but handed the bearing phrase it was trained on.
+  - {tag: follow_truth, block: T, adapter: orig, instr: match, scene: present, guard: "on", beta: 0, hint_mode: truth}
+  # Wrong colour word, identical pixels. Only informative if follow_none moves.
+  - {tag: follow_mis,   block: M, adapter: orig, instr: mismatch, scene: present, guard: "on", beta: 0, hint_mode: none}
+  # Our fine-tune under the hinted condition, for the same comparison as elsewhere.
+  - {tag: follow_ft,    block: F, adapter: ft, instr: match, scene: present, guard: "on", beta: 0, hint_mode: truth}
+
+metrics:
+  yaw_deadband_rad: 0.03
+  beta_min_deg: 10.0
+  min_speed_mps: 0.2
+  max_vla_age_s: 4.0
+  both_active_deflect_deg: 5.0
+  bootstrap_block_s: 2.0
+
+thresholds:
+  # Following is a separation problem, not a one-off approach. A drone that
+  # never moves still records a small "closest approach" when the car drives
+  # past it, so closest distance alone is not evidence of following — the
+  # measured stationary flight scored 12.4 m that way.
+  following:
+    max_mean_separation_m: 25.0
+    min_frac_within_30m: 0.60
+  simultaneity:
+    min_both_ticks: 50
+    min_longest_run_s: 2.0
+    min_mean_closing: 0.30
+    min_mean_deflect_deg: 10.0
+  navigation:
+    null_turn_toward: 0.5
+    min_turn_toward: 0.60
+    max_p: 0.05
+    min_bias_corrected: 0.55
+  necessity:
+    guard_on_nfz_s: 0.0
+    guard_on_entered: false
+    guard_off_expect_entered: true

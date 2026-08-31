@@ -16,6 +16,8 @@ Run (vla-real env, base model + LoRA downloaded, AirSim NH running):
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import math
 import re
 import sys
@@ -50,7 +52,15 @@ def dequantize(bin_val: int, axis: str) -> float:
 
 
 def semantic_direction(pos, yaw, target) -> str:
-    """AerialVLA's training-time hint: rough direction of the target, body frame."""
+    """AerialVLA's training-time hint: rough direction of the target, body frame.
+
+    `target=None` means "no hint available" and returns an empty phrase. This is
+    NOT the same as target=(0, 0), which is a real coordinate and yields a real
+    bearing toward the world origin — passing (0, 0) to mean "no target" leaks a
+    ground-truth direction into the prompt.
+    """
+    if target is None:
+        return ""
     dx, dy = target[0] - pos[0], target[1] - pos[1]
     if math.hypot(dx, dy) < 0.5:
         return ""
@@ -69,6 +79,19 @@ def semantic_direction(pos, yaw, target) -> str:
     if -120 <= ang < -60:
         return "to your left "
     return "to your left rear "
+
+
+def build_prompt(dir_text: str, obj_desc: str) -> str:
+    """The ONE place an AerialVLA prompt is formed, so it can be logged and hashed.
+
+    Whitespace is normalised so that an empty `dir_text` or `obj_desc` produces a
+    clean string. That matters for the semantic experiment: the "no object
+    description" arm must differ from the "correct description" arm by the object
+    phrase alone, not by a stray space.
+    """
+    head = " ".join(p for p in ("Fly", dir_text.strip(), "and find the target.") if p)
+    body = " ".join(p for p in (head, obj_desc.strip()) if p)
+    return f"<image>\n{body}\nAction: "
 
 
 def make_airsim_obs():
@@ -111,11 +134,18 @@ class AerialVLABackend:
     """
 
     def __init__(self, obj_desc: str, target_xy, obs_factory=None,
-                 lora_id: str = LORA_ID):
+                 lora_id: str = LORA_ID, inference_log=None):
         """
         obs_factory: callable invoked ONCE inside the worker thread; must
         return a zero-arg callable producing (front_PIL, down_PIL, (x, y, yaw))
         or None. Defaults to the classic-AirSim implementation below.
+
+        target_xy: (x, y) for the training-time direction hint, or None for no
+        hint at all. None is the honest way to run a purely semantic mission;
+        (0, 0) is a real coordinate, not a sentinel.
+
+        inference_log: optional Path — one JSONL record per inference, including
+        the decoded bins and the pose captured WITH the image.
         """
         import torch
         from peft import PeftModel
@@ -125,11 +155,27 @@ class AerialVLABackend:
         self.obj_desc = obj_desc
         self.target_xy = target_xy
         self.obs_factory = obs_factory or make_airsim_obs
+        self.inference_log = Path(inference_log) if inference_log else None
         self._lock = threading.Lock()
         self._stop = False
         self._n_inf = 0
         self._fwd, self._down, self._yaw = 0.0, 0.0, 0.0
         self._land = False
+        # pose captured WITH the image the latest action was inferred from —
+        # not the flight loop's current pose. At 1-3 Hz inference vs 10 Hz
+        # control the drone moves ~1 m and yaws several degrees in between, and
+        # that error is correlated with yaw rate, i.e. with the very signal the
+        # semantic experiment measures.
+        self._px, self._py, self._psi = 0.0, 0.0, 0.0
+        self._bins = (0, 0, 0)
+        self._t_inf = 0.0
+        self._prompt_sha8 = ""
+        self._hint_used = False
+        self._timing = {}
+        # 20 was the upstream default, but the model stops at EOS after ~11
+        # tokens and the action is three integers. A tighter cap costs nothing
+        # when the model behaves and bounds the worst case when it rambles.
+        self.max_new_tokens = 12
         self.torch = torch
 
         self.lora_id = lora_id
@@ -170,10 +216,12 @@ class AerialVLABackend:
 
         get_obs = self.obs_factory()             # created IN this thread
         while not self._stop:
+            t_a = time.time()
             obs = get_obs()
             if obs is None:
                 time.sleep(0.05)
                 continue
+            t_obs = time.time() - t_a
             front, down, (px, py, yaw) = obs
             mosaic = Image.new("RGB", (224, 448), (0, 0, 0))
             mosaic.paste(front, (0, 0))
@@ -181,35 +229,74 @@ class AerialVLABackend:
 
             dir_text = semantic_direction((px, py), yaw, self.target_xy)
 
-            prompt = f"<image>\nFly {dir_text}and find the target. {self.obj_desc}\nAction: "
+            t_b = time.time()
+            prompt = build_prompt(dir_text, self.obj_desc)
             enc = self.tok(prompt, return_tensors="pt")
             pv = self.imgproc(images=mosaic, return_tensors="pt")["pixel_values"]
+            t_pre = time.time() - t_b
+
+            t_c = time.time()
             with self.torch.inference_mode():
                 out = self.model.generate(
                     input_ids=enc["input_ids"].to("cuda"),
                     attention_mask=enc["attention_mask"].to("cuda"),
                     pixel_values=pv.to("cuda", dtype=self.torch.bfloat16),
-                    max_new_tokens=20, do_sample=False,
+                    max_new_tokens=self.max_new_tokens, do_sample=False,
                     eos_token_id=[self.tok.eos_token_id])
+            t_gen = time.time() - t_c
+            self._timing = {"obs_s": round(t_obs, 3), "pre_s": round(t_pre, 3),
+                            "gen_s": round(t_gen, 3),
+                            "cycle_s": round(time.time() - t_a, 3),
+                            "new_tokens": int(out.shape[1] - enc["input_ids"].shape[1])}
             text = self.tok.decode(out[0], skip_special_tokens=False)
             tail = text.split("Action:")[-1]
             ints = re.findall(r"\d+", tail)
             if len(ints) >= 3:
-                fwd = dequantize(int(ints[-3]), "forward")
-                dwn = dequantize(int(ints[-2]), "down")
-                yr = dequantize(int(ints[-1]), "yaw")
+                bins = (int(ints[-3]), int(ints[-2]), int(ints[-1]))
+                fwd = dequantize(bins[0], "forward")
+                dwn = dequantize(bins[1], "down")
+                yr = dequantize(bins[2], "yaw")
                 land = ("LAND" in tail) or (fwd < 0.01 and abs(dwn) < 0.01 and abs(yr) < 0.01)
+                sha8 = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:8]
+                now = time.time()
                 with self._lock:
                     self._fwd, self._down, self._yaw, self._land = fwd, dwn, yr, land
+                    self._px, self._py, self._psi = px, py, yaw
+                    self._bins = bins
+                    self._t_inf = now
+                    self._prompt_sha8 = sha8
+                    self._hint_used = bool(dir_text.strip())
                     self._n_inf += 1
-                if self._n_inf % 5 == 1:
-                    print(f"  [vla#{self._n_inf}] dir={dir_text.strip() or 'here'!r} "
+                    seq = self._n_inf
+                if self.inference_log is not None:
+                    rec = {"seq": seq, "t": now, "prompt": prompt, "prompt_sha8": sha8,
+                           "hint_used": bool(dir_text.strip()), "bins": list(bins),
+                           "fwd": fwd, "down": dwn, "yaw": yr, "land": land,
+                           "px": px, "py": py, "psi": yaw, **self._timing}
+                    with self.inference_log.open("a", encoding="utf-8") as fh:
+                        fh.write(json.dumps(rec) + "\n")
+                if seq % 5 == 1:
+                    print(f"  [vla#{seq}] dir={dir_text.strip() or 'here'!r} "
                           f"fwd={fwd:.2f} down={dwn:.2f} yaw={yr:.2f}"
                           f"{' LAND' if land else ''}")
 
     def latest(self):
         with self._lock:
             return self._fwd, self._down, self._yaw, self._land
+
+    def latest_full(self) -> dict:
+        """Everything about the most recent inference, for per-tick logging.
+
+        `px/py/psi` are the pose the IMAGE was captured at, so an analyzer can
+        compute the bearing the model actually saw rather than the one that
+        existed a few hundred milliseconds later.
+        """
+        with self._lock:
+            return {"seq": self._n_inf, "t_infer": self._t_inf,
+                    "fwd": self._fwd, "down": self._down, "yaw": self._yaw,
+                    "land": self._land, "bins": list(self._bins),
+                    "px": self._px, "py": self._py, "psi": self._psi,
+                    "prompt_sha8": self._prompt_sha8, "hint_used": self._hint_used}
 
 
 class RateLimiter:
@@ -257,7 +344,7 @@ def main() -> int:
     policy = load_policy(args.policy)
     mission = ConstraintCompiler(policy).parse_command(args.command)
     shield = Shield(policy, lookahead_s=3.0, dt=0.5)
-    audit = AuditLogger(out / "audit.jsonl", policy.policy_hash)
+    audit = AuditLogger(out / "audit.jsonl", policy)   # the POLICY, so a hot-applied rule restamps the hash
     target = (mission.target_x, mission.target_y)
     print(f"[policy] {policy.policy_id} {policy.policy_hash}")
     print(f"[task]   target={target}  object={args.object!r}")

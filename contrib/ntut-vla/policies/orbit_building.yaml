@@ -1,0 +1,85 @@
+# Guardrail policy for the building-orbit scan.
+#
+# The task the 2026-08-05 meeting asked for ("環繞建築掃描"): circle a building
+# and keep it in view. It is also the natural home for the OWL-ViT -> AerialVLA
+# bridge, because a building does not move and the bridge runs at ~0.37 Hz.
+#
+# WHY THIS BUILDING. The occupancy map (demo/out/citymap/occ_day.npz, 80x80 at
+# 2 m, origin -80,-80) has nine blocked components, all of them city blocks
+# rather than standalone buildings. Every candidate was checked computationally,
+# not chosen by eye:
+#
+#   centroid        footprint  rmax   isolation  orbit ring verdict
+#   (67.0, -68.0)   24 x 26    16.3   41.0       clears, but the ring leaves the
+#                                                MAPPED area (x reaches 90)
+#   (67.3,  67.3)   24 x 24    15.6   41.3       same problem
+#   (63.2,   0.0)   24 x 54    29.9   39.2       elongated; ring at rmax+5 has
+#                                                only 4.3 m clearance - illegal
+#   ( 0.0,   0.0)   50 x 50    33.9   56.0       CHOSEN
+#
+# Flying off the mapped area is not merely untidy: obstacle_clearance is the only
+# rule that can see obstacles at all, and outside the grid it has nothing to see.
+# A flight already hit street furniture the map does not contain. So the ring has
+# to stay inside the map, and only the central block allows that.
+#
+# WHY RADIUS 41 m. Measured clearance around (0,0), sampled every 5 degrees:
+#
+#   R=37  min clearance 3.1 m  ILLEGAL against the 5 m rule
+#   R=39  min clearance 5.1 m  legal, 0.1 m of margin - too tight to fly
+#   R=41  min clearance 7.1 m  legal with 2.1 m of margin   <- chosen
+#   R=45  min clearance 11.0 m legal, but a 141 s lap
+#
+# 41 m gives a 129 s full lap at 2 m/s and a 64 s half lap. The evaluation is
+# angular coverage, not lap count, so a half lap inside one flight window is the
+# realistic target. See docs/DESIGN-orbit-building-task.md.
+#
+# The usual spawn at (35, -20) is 40.3 m from the centroid, so the aircraft
+# starts essentially ON the ring and the transit does not eat the flight window.
+policy_id: orbit-building
+version: 0.1.0
+constraints:
+  # The orbit radius and this rule interact directly: an orbit inside the
+  # clearance ring is an unflyable policy, and that is checked above rather than
+  # discovered in flight.
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 5.0
+    soft_margin_m: 2.0
+
+  # Higher and wider than the follow policies. Two reasons, both learned:
+  #
+  # Floor 12 m, because an orbit sweeps the aircraft all the way round a block
+  # and past every kerb on the way. The obstacle map holds BUILDINGS ONLY, so the
+  # street lamps and trees on those kerbs are invisible to the clearance rule -
+  # a flight at 9 m hit some at (48.3, -0.9) and froze there.
+  #
+  # Ceiling 28 m rather than the follow policies' 17 m, because the subject is a
+  # tall block seen side-on rather than a car on the ground. Camera reach is not
+  # the binding constraint here: the front camera is pitched 20 deg down with a
+  # 29.4 deg vertical half-FOV, and a 50 x 50 m block at 41 m range fills a large
+  # part of the frame from anywhere in this band.
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 12
+    alt_max_m: 28
+
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 5.0
+    climb_rate_max_mps: 2.0
+    # Named deg/s but compared against a rad/s value, so it never fires. This is
+    # deliberate and documented, not an oversight: making it live would be the
+    # first time the Shield edits yaw, which would break the separation the whole
+    # follow result rests on (0 yaw edits over 419 violation ticks). See
+    # tests/test_guardrail_coverage.py, the KNOWN_DEFECT test, and
+    # docs/FINDING-guardrail-coverage-aug2026.md.
+    yaw_rate_max_dps: 45.0

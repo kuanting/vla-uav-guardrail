@@ -41,7 +41,11 @@ UNREAL = ("C:/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/"
           "UnrealEditor.exe")
 UPROJECT = ROOT / "PASBlocks" / "Blocks.uproject"
 FLIGHT_SCRIPT = "demo/aerialvla_pas_demo.py"
-ADAPTER = "D:/models/aerialvla-ft/run2/epoch1"
+# The ORIGINAL adapter, not our fine-tune. Measured: the fine-tune improved
+# coordinate path efficiency (0.942 -> 0.996) but LOWERED object-slot sensitivity
+# (0.454 -> 0.321) -- it got better at the thing a planner already does and worse
+# at the thing the grant needs. See docs/FINDING-what-drives-aerialvla.md.
+ADAPTER = "D:/models/aerialvla-lora/aero_vla"
 POLICY_REL = "policies/gui_policy.yaml"
 BASE_POLICY = ROOT / "policies" / "urban_demo_policy.yaml"
 TAG = "gui_flight"
@@ -87,6 +91,20 @@ FALLBACK_KEEP = [
 ]
 
 
+def _point_in_poly(px, py, poly):
+    """Ray-casting point-in-polygon test on (x_north, y_east) vertices."""
+    inside = False
+    n = len(poly)
+    for k in range(n):
+        x1, y1 = poly[k]
+        x2, y2 = poly[(k + 1) % n]
+        if (y1 > py) != (y2 > py):
+            xint = x1 + (py - y1) * (x2 - x1) / ((y2 - y1) or 1e-12)
+            if px < xint:
+                inside = not inside
+    return inside
+
+
 class MissionControl:
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -95,6 +113,11 @@ class MissionControl:
 
         self.waypoints: list[tuple[float, float]] = []   # (x_north, y_east)
         self.nfzs: list[tuple[float, float, float, float]] = []  # xmin,xmax,ymin,ymax
+        # arbitrary-shape NFZs: each is a list of (x_north, y_east) vertices.
+        # The policy schema already takes arbitrary vertices, so these are
+        # enforced by the Shield exactly like the rectangles.
+        self.polys: list[list[tuple[float, float]]] = []
+        self.poly_draft: list[tuple[float, float]] = []
         self._drag_start = None
         self._drag_rect_id = None
 
@@ -189,6 +212,22 @@ class MissionControl:
         self.map_status.pack(side="left", padx=6)
         r += 1
 
+        # polygon NFZ + return-to-home
+        shp = ttk.Frame(side)
+        shp.grid(row=r, column=0, columnspan=2, sticky="ew", pady=2)
+        self.poly_mode = tk.BooleanVar(value=False)
+        ttk.Checkbutton(shp, text="Polygon NFZ (click = vertex)",
+                        variable=self.poly_mode).pack(side="left", padx=2)
+        ttk.Button(shp, text="Close polygon",
+                   command=self.close_polygon).pack(side="left", padx=2)
+        r += 1
+        rth = ttk.Frame(side)
+        rth.grid(row=r, column=0, columnspan=2, sticky="ew", pady=2)
+        self.rth_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(rth, text="Return to home after last waypoint",
+                        variable=self.rth_var).pack(side="left", padx=2)
+        r += 1
+
         edit = ttk.Frame(side)
         edit.grid(row=r, column=0, columnspan=2, sticky="ew", pady=4)
         ttk.Button(edit, text="Undo waypoint",
@@ -260,6 +299,26 @@ class MissionControl:
             c.create_rectangle(x0, y0, x1, y1, fill="red", stipple="gray25",
                                outline="red", width=2, tags="static")
 
+        # polygon NFZs (any shape) + the one being drawn
+        for poly in self.polys:
+            flat = []
+            for (px, py) in poly:
+                flat.extend(self.w2c(px, py))
+            if len(poly) >= 3:
+                c.create_polygon(*flat, fill="red", stipple="gray25",
+                                 outline="red", width=2, tags="static")
+        if self.poly_draft:
+            flat = []
+            for (px, py) in self.poly_draft:
+                flat.extend(self.w2c(px, py))
+            if len(self.poly_draft) >= 2:
+                c.create_line(*flat, fill="#d02020", width=2, dash=(4, 3),
+                              tags="static")
+            for (px, py) in self.poly_draft:
+                vx, vy = self.w2c(px, py)
+                c.create_oval(vx - 3, vy - 3, vx + 3, vy + 3, fill="#d02020",
+                              outline="", tags="static")
+
         # spawn marker
         sx, sy = self.w2c(*SPAWN)
         c.create_oval(sx - 9, sy - 9, sx + 9, sy + 9, outline="green",
@@ -321,6 +380,13 @@ class MissionControl:
     # ----------------------------------------------------- map handlers
     def _on_left_click(self, ev):
         x, y = self.c2w(ev.x, ev.y)
+        # polygon-NFZ mode: left-clicks drop vertices instead of waypoints
+        if self.poly_mode.get():
+            self.poly_draft.append((x, y))
+            self._log(f"[nfz] vertex {len(self.poly_draft)} at "
+                      f"({x:.0f} N, {y:.0f} E) — 'Close polygon' when done")
+            self.redraw()
+            return
         snapped = False
         if self.occ is not None and city_planner is not None:
             try:
@@ -335,6 +401,17 @@ class MissionControl:
                 self._log(f"[map] snap check failed: {e}")
         self.waypoints.append((x, y))
         self.snapped.append(snapped)
+        self._replan()
+        self.redraw()
+
+    def close_polygon(self):
+        """Finish the polygon being drawn (needs >= 3 vertices)."""
+        if len(self.poly_draft) < 3:
+            self._log("[nfz] need at least 3 vertices to close a polygon")
+            return
+        self.polys.append(list(self.poly_draft))
+        self._log(f"[nfz] polygon NFZ closed with {len(self.poly_draft)} vertices")
+        self.poly_draft = []
         self._replan()
         self.redraw()
 
@@ -376,15 +453,25 @@ class MissionControl:
             self.redraw()
 
     def undo_nfz(self):
-        if self.nfzs:
+        # undo in the reverse order things were added: draft vertex, then the
+        # most recent polygon, then the most recent rectangle
+        if self.poly_draft:
+            self.poly_draft.pop()
+        elif self.polys:
+            self.polys.pop()
+        elif self.nfzs:
             self.nfzs.pop()
-            self._replan()
-            self.redraw()
+        else:
+            return
+        self._replan()
+        self.redraw()
 
     def clear_all(self):
         self.waypoints.clear()
         self.snapped.clear()
         self.nfzs.clear()
+        self.polys.clear()
+        self.poly_draft.clear()
         self.planned = []
         self.trail.clear()
         self.canvas.delete("live")
@@ -488,8 +575,22 @@ class MissionControl:
                 i0 = max(0, int((xmin - ox) / res)); i1 = min(N, int((xmax - ox) / res) + 1)
                 j0 = max(0, int((ymin - oy) / res)); j1 = min(N, int((ymax - oy) / res) + 1)
                 base[i0:i1, j0:j1] = 1
+            # stamp polygon NFZs (any shape) via a point-in-polygon test
+            for poly in self.polys:
+                if len(poly) < 3:
+                    continue
+                pxs = [p[0] for p in poly]; pys = [p[1] for p in poly]
+                i0 = max(0, int((min(pxs) - ox) / res)); i1 = min(N, int((max(pxs) - ox) / res) + 2)
+                j0 = max(0, int((min(pys) - oy) / res)); j1 = min(N, int((max(pys) - oy) / res) + 2)
+                for i in range(i0, i1):
+                    wx = ox + i * res
+                    for j in range(j0, j1):
+                        if _point_in_poly(wx, oy + j * res, poly):
+                            base[i, j] = 1
             grid = city_planner.inflate(base, res, 6.0)
             pts = [SPAWN] + list(self.waypoints)
+            if self.rth_var.get():
+                pts = pts + [SPAWN]        # return-to-home leg
             full = []
             unreachable = False
             for a, b in zip(pts, pts[1:]):
@@ -600,6 +701,23 @@ class MissionControl:
                 "altitude_ceiling_m": 60,
                 "margin_m": 1.0,
             })
+        # polygon NFZs: the policy schema already accepts arbitrary vertices, so
+        # these are enforced by the Shield exactly like the rectangles
+        for i, poly in enumerate(self.polys):
+            if len(poly) < 3:
+                continue
+            fences.append({
+                "id": f"gui-poly-{i + 1}",
+                "type": "polygon_fence",
+                "constraint_type": "hard",
+                "priority": "P0",
+                "violation_action": "repair",
+                "vertices": [{"x": round(px, 1), "y": round(py, 1)}
+                             for (px, py) in poly],
+                "altitude_floor_m": 0,
+                "altitude_ceiling_m": 60,
+                "margin_m": 1.0,
+            })
         # altitude band from the GUI selector (High = fly over the city roofs)
         high = self.alt_var.get().startswith("High")
         amin, amax = (35, 55) if high else (15, 25)
@@ -642,6 +760,8 @@ class MissionControl:
                "--citymap", str(citymap),
                "--tag", TAG,
                "--map-label", choice]
+        if self.rth_var.get():
+            cmd.append("--rth")
         # stale live.json from a previous run would flash an old position
         try:
             LIVE_JSON.unlink(missing_ok=True)

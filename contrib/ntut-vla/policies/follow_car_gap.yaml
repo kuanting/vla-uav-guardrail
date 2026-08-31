@@ -1,0 +1,83 @@
+# Follow-the-car policy with a no-fly zone that leaves a way past.
+#
+# The corridor here is 20 m wide with >= 5 m building clearance (x 30..50). The
+# fence covers x 26..42, so 7 m of legal road remains at x 43..50. The car drives
+# down the middle at x = 38, straight through the zone; the drone has to give up
+# the direct line and squeeze past on the east side.
+#
+# This is the interesting version. `follow_car_nfz.yaml` fences the whole
+# corridor, which proves the rule is absolute but ends the mission: the aircraft
+# is pinned at the boundary and the car escapes. Here the rule costs the drone
+# its preferred path without costing it the target, which is what a usable
+# safety layer looks like.
+#
+# The controller also knows these zones (FenceGuard in demo/follow_vlm.py) and
+# brakes smoothly on approach. Leaving that to the Shield alone produced 659
+# corrections in 795 ticks — the aircraft chattering against the boundary,
+# technically safe and visibly alarming.
+policy_id: follow-car-gap
+version: 0.1.0
+constraints:
+  - id: nfz-partial
+    type: polygon_fence
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    vertices:
+      - {x: 26, y: 2}
+      - {x: 42, y: 2}
+      - {x: 42, y: 16}
+      - {x: 26, y: 16}
+    altitude_floor_m: 0
+    altitude_ceiling_m: 60
+    margin_m: 1.0
+
+  # 3.0 m, lowered from 5.0 when the occupancy map stopped being empty.
+  #
+  # The map was built by collapsing voxels over 15-55 m AGL while these demos
+  # cruise at 9 m, so nothing shorter than a building was in it - which is why a
+  # flight struck street furniture at (48.3, -0.9) where the map reported 7.4 m
+  # of clearance. Rebuilt over 6-14 m, matching this policy's altitude envelope,
+  # the same point measures 1.8 m.
+  #
+  # With that furniture present a 5 m ring is not satisfiable on these streets:
+  # at y = 20 the widest free point across the road carries only 5.2 m, and six
+  # of twenty-five route waypoints fell below the minimum. The old 5 m read as
+  # the larger safety margin and was a bigger number protecting against less.
+  # 3 m around a pole that is actually in the map is the stronger constraint.
+  # See docs/FINDING-the-occupancy-map-was-looking-elsewhere.md.
+  - id: bld-clearance
+    type: obstacle_clearance
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    min_clearance_m: 3.0
+    soft_margin_m: 2.0
+
+  # HIGHER than the other follow policies, and deliberately so. Skirting a fence
+  # pushes the aircraft off the centre of the road and towards the pavement,
+  # where the street lamps and trees are — and the obstacle map holds BUILDINGS
+  # ONLY, so the clearance rule cannot see them. A flight at 9 m hit street
+  # furniture at (48.3, -0.9) and froze there for the rest of the run.
+  #
+  # 13 m clears the canopy. The cost is camera reach: the front camera is
+  # pitched 20 deg down with a 29.4 deg vertical half-FOV, so it sees ground from
+  # 0.86 x altitude — 11.2 m here instead of 7.7 m.
+  - id: alt-band
+    type: altitude_envelope
+    constraint_type: hard
+    priority: P0
+    violation_action: repair
+    alt_min_m: 10
+    alt_max_m: 17
+
+  - id: kin-caps
+    type: kinematic_envelope
+    constraint_type: hard
+    priority: P1
+    violation_action: repair
+    speed_max_mps: 5.0
+    climb_rate_max_mps: 2.0
+    # Named deg/s but compared against a rad/s value, so it never fires.
+    # Documented, not fixed here — see semantic_conflict.yaml.
+    yaw_rate_max_dps: 45.0

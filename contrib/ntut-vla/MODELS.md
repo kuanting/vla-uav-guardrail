@@ -59,6 +59,35 @@ Self-collected flight datasets live under `dataset/` (~1 GB). Regenerate with
 (`training/eval_*.json`, `research_log.md`, `ft_loss_log.csv`) capture the
 results without the raw data.
 
+## Vehicle models for the traffic demo (not in git)
+
+The street traffic uses glTF cars rather than packaged meshes, because this
+build binds exactly one material (`M_Orange`) and refuses every other — so the
+only way to get more than one colour is to put the colour **inside** the mesh
+file. Measured at the same pose in the same run, the glTF taxi also beats the
+mesh it replaced on both halves of the test: detector score 0.108 against 0.047,
+colour gate 0.317 against 0.119. Full numbers in
+`docs/FINDING-glb-vehicles-aug15.md`.
+
+| Asset | Source | Local path used by the code | Size |
+|---|---|---|---|
+| Kenney Car Kit (CC0) | https://opengameart.org/content/car-kit | `D:\models\kenney_car-kit\glb` | 4.8 MB zip, 6.1 MB repacked |
+
+The download cannot be used as-is. Kenney's GLBs reference their shared texture
+atlas by URI (`"uri": "Textures/colormap.png"`), and `spawn_object_from_file`
+takes one byte array with nowhere to resolve that from — you get geometry and no
+colour. Repack them first:
+
+```powershell
+python tools\embed_glb_textures.py --zip <kenney_car-kit_3.1.zip> --out D:\models\kenney_car-kit\glb
+```
+
+Then set `$env:VLA_GLB_DIR` to that directory, or pass `--glb-dir`.
+
+**Everything still runs without them.** The fleet falls back to the packaged
+meshes, with one colour, and says so once at startup. Nothing crashes; the
+tracking is just weaker, which is the state the demos were in before.
+
 ## Runtime environment
 
 conda env `vla-real`: torch 2.6.0+cu124, transformers 4.40.1, tokenizers 0.19.1,
